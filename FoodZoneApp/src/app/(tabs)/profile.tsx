@@ -56,6 +56,14 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {user.role === 'vendor' && (
+          <Button title="Manage store" variant="secondary" fullWidth onPress={() => router.push('/manage')} />
+        )}
+
+        {(user.role === 'admin' || user.role === 'super_admin') && (
+          <Button title="Admin console" variant="secondary" fullWidth onPress={() => router.push('/admin')} />
+        )}
+
         <Button
           title="Log out"
           variant="danger"

@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\VendorResource;
 use App\Models\Order;
+use App\Models\Post;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Services\NotificationService;
@@ -30,8 +31,11 @@ class AdminController extends Controller
             'users_total' => User::count(),
             'users_new_today' => User::where('created_at', '>=', $today)->count(),
             'vendors_total' => Vendor::count(),
+            'vendors_approved' => Vendor::where('status', VendorStatus::Approved->value)->count(),
             'vendors_pending' => Vendor::where('status', VendorStatus::Pending->value)->count(),
+            'orders_total' => Order::count(),
             'orders_today' => Order::where('created_at', '>=', $today)->count(),
+            'posts_total' => Post::count(),
             'revenue_today' => round((float) Order::where('created_at', '>=', $today)
                 ->where('status', OrderStatus::Delivered->value)->sum('total'), 2),
             'commission_today' => round((float) Order::where('created_at', '>=', $today)

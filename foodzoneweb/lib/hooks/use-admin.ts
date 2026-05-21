@@ -1,0 +1,69 @@
+"use client";
+
+import { api } from "@/lib/api";
+import type { ApiEnvelope, User, Vendor } from "@/lib/types";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+export interface AdminStats {
+  users_total: number;
+  users_new_today: number;
+  vendors_total: number;
+  vendors_approved: number;
+  vendors_pending: number;
+  orders_total: number;
+  orders_today: number;
+  posts_total: number;
+  revenue_today: number;
+  commission_today: number;
+}
+
+export function useAdminDashboard() {
+  return useQuery({ queryKey: ["admin-dashboard"], queryFn: () => api.get<AdminStats>("/admin/dashboard"), select: (e) => e.data });
+}
+
+export interface UserFilters {
+  q?: string;
+  role?: string;
+  status?: string;
+}
+
+export function useAdminUsers(filters: UserFilters) {
+  return useInfiniteQuery({
+    queryKey: ["admin-users", filters],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<User[]>("/admin/users", { query: { ...filters, page: pageParam } }),
+    getNextPageParam: (last: ApiEnvelope<User[]>) => (last.meta?.has_more ? last.meta.current_page + 1 : undefined),
+  });
+}
+
+export function useUserModeration() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin-users"] });
+    qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
+  };
+  const ban = useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => api.put(`/admin/users/${id}/ban`, { reason }), onSuccess: invalidate });
+  const suspend = useMutation({ mutationFn: ({ id, days }: { id: number; days: number }) => api.put(`/admin/users/${id}/suspend`, { days }), onSuccess: invalidate });
+  const unban = useMutation({ mutationFn: (id: number) => api.put(`/admin/users/${id}/unban`), onSuccess: invalidate });
+  return { ban, suspend, unban };
+}
+
+export function useAdminVendors(status?: string) {
+  return useInfiniteQuery({
+    queryKey: ["admin-vendors", status],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<Vendor[]>("/admin/vendors", { query: { status, page: pageParam } }),
+    getNextPageParam: (last: ApiEnvelope<Vendor[]>) => (last.meta?.has_more ? last.meta.current_page + 1 : undefined),
+  });
+}
+
+export function useVendorModeration() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin-vendors"] });
+    qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
+  };
+  const approve = useMutation({ mutationFn: (id: number) => api.put(`/admin/vendors/${id}/approve`), onSuccess: invalidate });
+  const reject = useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => api.put(`/admin/vendors/${id}/reject`, { reason }), onSuccess: invalidate });
+  return { approve, reject };
+}

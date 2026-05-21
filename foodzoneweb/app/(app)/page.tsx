@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/ui/States";
 import { useFeed } from "@/lib/hooks/use-feed";
+import { Search } from "lucide-react";
+import Link from "next/link";
 
 export default function FeedPage() {
   const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeed();
@@ -14,7 +16,15 @@ export default function FeedPage() {
 
   return (
     <>
-      <PageHeader title="Feed" subtitle="What's cooking in your circle" />
+      <PageHeader
+        title="Feed"
+        subtitle="What's cooking in your circle"
+        action={
+          <Link href="/search" aria-label="Search" className="rounded-lg p-2 text-muted hover:bg-surface hover:text-content">
+            <Search className="h-5 w-5" />
+          </Link>
+        }
+      />
 
       <div className="mx-auto w-full max-w-2xl space-y-4 p-4">
         <PostComposer />

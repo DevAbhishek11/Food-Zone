@@ -1,5 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, RefreshControl, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PostCard } from '@/components/post-card';
@@ -10,6 +12,7 @@ import { useCreatePost, useFeed } from '@/lib/hooks';
 
 export default function FeedScreen() {
   const c = useTheme();
+  const router = useRouter();
   const { data, isLoading, isError, refetch, isRefetching, fetchNextPage, hasNextPage } = useFeed();
   const createPost = useCreatePost();
   const [body, setBody] = useState('');
@@ -29,8 +32,11 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.background }}>
-      <View style={{ paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderBottomWidth: 1, borderBottomColor: c.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderBottomWidth: 1, borderBottomColor: c.border }}>
         <Text style={{ color: c.text, fontSize: 22, fontWeight: '700' }}>Feed</Text>
+        <Pressable onPress={() => router.push('/search')} hitSlop={10}>
+          <Ionicons name="search" size={22} color={c.text} />
+        </Pressable>
       </View>
 
       {isLoading ? (

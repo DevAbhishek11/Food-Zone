@@ -4,7 +4,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/cn";
 import { useAuthStore } from "@/lib/auth-store";
 import { useUnreadCount } from "@/lib/hooks/use-notifications";
-import { Bell, Home, LogOut, Receipt, Store, UserRound, UtensilsCrossed } from "lucide-react";
+import { Bell, Home, LayoutDashboard, LogOut, Receipt, Shield, Store, UserRound, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ComponentType, ReactNode } from "react";
@@ -16,7 +16,7 @@ interface NavItem {
   badge?: boolean;
 }
 
-const NAV: NavItem[] = [
+const BASE_NAV: NavItem[] = [
   { href: "/", label: "Feed", icon: Home },
   { href: "/vendors", label: "Order Food", icon: Store },
   { href: "/notifications", label: "Inbox", icon: Bell, badge: true },
@@ -24,8 +24,12 @@ const NAV: NavItem[] = [
   { href: "/profile", label: "Profile", icon: UserRound },
 ];
 
+const VENDOR_NAV: NavItem = { href: "/vendor", label: "My Store", icon: LayoutDashboard };
+const ADMIN_NAV: NavItem = { href: "/admin", label: "Admin", icon: Shield };
+
 function isActive(pathname: string, href: string): boolean {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(href + "/");
 }
 
 function Count({ n }: { n: number }) {
@@ -43,6 +47,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { data: unread = 0 } = useUnreadCount();
+
+  const role = user?.role;
+  const NAV: NavItem[] = [
+    ...BASE_NAV,
+    ...(role === "vendor" ? [VENDOR_NAV] : []),
+    ...(role === "admin" || role === "super_admin" ? [ADMIN_NAV] : []),
+  ];
 
   const handleLogout = async () => {
     await logout();

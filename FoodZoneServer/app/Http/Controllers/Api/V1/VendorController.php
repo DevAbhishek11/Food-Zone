@@ -161,6 +161,35 @@ class VendorController extends Controller
         return ApiResponse::success(new VendorResource($vendor), 'Your vendor profile.');
     }
 
+    /** Operational metrics for the vendor dashboard. */
+    public function stats(Request $request): JsonResponse
+    {
+        $vendor = $this->ownedVendor($request);
+        $today = now()->startOfDay();
+
+        $orders = $vendor->orders();
+        $deliveredToday = (clone $orders)
+            ->where('status', \App\Enums\OrderStatus::Delivered->value)
+            ->where('delivered_at', '>=', $today);
+
+        return ApiResponse::success([
+            'is_open' => (bool) $vendor->is_open,
+            'pending_orders' => (clone $orders)->where('status', \App\Enums\OrderStatus::Pending->value)->count(),
+            'active_orders' => (clone $orders)->whereIn('status', [
+                \App\Enums\OrderStatus::Accepted->value,
+                \App\Enums\OrderStatus::Preparing->value,
+                \App\Enums\OrderStatus::Ready->value,
+                \App\Enums\OrderStatus::OutForDelivery->value,
+            ])->count(),
+            'orders_today' => (clone $orders)->where('created_at', '>=', $today)->count(),
+            'revenue_today' => round((float) (clone $deliveredToday)->sum('total'), 2),
+            'total_orders' => (int) $vendor->orders_count,
+            'rating_avg' => (float) $vendor->rating_avg,
+            'rating_count' => (int) $vendor->rating_count,
+            'menu_items' => $vendor->items()->count(),
+        ], 'Vendor stats.');
+    }
+
     // ----------------------------------------------------------------
 
     private function resolveVendor(string $idOrSlug): Vendor

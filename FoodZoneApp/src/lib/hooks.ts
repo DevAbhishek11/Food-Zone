@@ -7,6 +7,31 @@ function nextPage<T>(last: ApiEnvelope<T>) {
   return last.meta?.has_more ? last.meta.current_page + 1 : undefined;
 }
 
+export interface CombinedSearch {
+  users: User[];
+  vendors: Vendor[];
+  posts: Post[];
+}
+
+export function useCombinedSearch(q: string) {
+  return useQuery({
+    queryKey: ['search', 'all', q],
+    enabled: q.trim().length >= 2,
+    queryFn: () => api.get<CombinedSearch>('/search', { query: { q } }),
+    select: (e) => e.data,
+  });
+}
+
+export function useTypedSearch(q: string, type: 'users' | 'vendors' | 'posts') {
+  return useInfiniteQuery({
+    queryKey: ['search', type, q],
+    enabled: q.trim().length >= 2,
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<(User | Vendor | Post)[]>('/search', { query: { q, type, page: pageParam } }),
+    getNextPageParam: nextPage,
+  });
+}
+
 export function useFeed() {
   return useInfiniteQuery({
     queryKey: ['feed'],
@@ -154,4 +179,119 @@ export function useToggleFollow(username: string) {
     onSuccess: invalidate,
   });
   return { follow, unfollow };
+}
+
+// ---- Vendor management -----------------------------------------------------
+
+export interface VendorStats {
+  is_open: boolean;
+  pending_orders: number;
+  active_orders: number;
+  orders_today: number;
+  revenue_today: number;
+  total_orders: number;
+  rating_avg: number;
+  rating_count: number;
+  menu_items: number;
+}
+
+export function useVendorStats() {
+  return useQuery({
+    queryKey: ['vendor-stats'],
+    queryFn: () => api.get<VendorStats>('/vendor/stats'),
+    select: (e) => e.data,
+  });
+}
+
+export function useToggleStoreOpen() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (is_open: boolean) => api.post('/vendor/store/toggle-open', { is_open }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vendor-stats'] }),
+  });
+}
+
+export function useVendorOrders() {
+  return useInfiniteQuery({
+    queryKey: ['vendor-orders'],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<Order[]>('/vendor/orders', { query: { page: pageParam } }),
+    getNextPageParam: nextPage,
+  });
+}
+
+export function useUpdateOrderStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, status }: { orderId: number; status: string }) =>
+      api.post(`/vendor/orders/${orderId}/status`, { status }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['vendor-orders'] });
+      qc.invalidateQueries({ queryKey: ['vendor-stats'] });
+    },
+  });
+}
+
+export function useVendorReviewsAdmin() {
+  return useInfiniteQuery({
+    queryKey: ['vendor-reviews-admin'],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<Review[]>('/vendor/reviews', { query: { page: pageParam } }),
+    getNextPageParam: nextPage,
+  });
+}
+
+export function useReplyReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ratingId, reply }: { ratingId: number; reply: string }) =>
+      api.post(`/vendor/reviews/${ratingId}/reply`, { reply }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vendor-reviews-admin'] }),
+  });
+}
+
+// ---- Admin -----------------------------------------------------------------
+
+export interface AdminStats {
+  users_total: number;
+  users_new_today: number;
+  vendors_total: number;
+  vendors_approved: number;
+  vendors_pending: number;
+  orders_total: number;
+  orders_today: number;
+  posts_total: number;
+  revenue_today: number;
+  commission_today: number;
+}
+
+export function useAdminDashboard() {
+  return useQuery({
+    queryKey: ['admin-dashboard'],
+    queryFn: () => api.get<AdminStats>('/admin/dashboard'),
+    select: (e) => e.data,
+  });
+}
+
+export function useAdminVendors(status?: string) {
+  return useInfiniteQuery({
+    queryKey: ['admin-vendors', status],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<Vendor[]>('/admin/vendors', { query: { status, page: pageParam } }),
+    getNextPageParam: nextPage,
+  });
+}
+
+export function useVendorModeration() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['admin-vendors'] });
+    qc.invalidateQueries({ queryKey: ['admin-dashboard'] });
+  };
+  const approve = useMutation({ mutationFn: (id: number) => api.put(`/admin/vendors/${id}/approve`), onSuccess: invalidate });
+  const reject = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) => api.put(`/admin/vendors/${id}/reject`, { reason }),
+    onSuccess: invalidate,
+  });
+  return { approve, reject };
 }

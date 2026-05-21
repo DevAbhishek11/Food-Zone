@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PostController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\ReviewController;
+use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\VendorController;
 use Illuminate\Support\Facades\Route;
@@ -44,6 +45,7 @@ Route::prefix('v1')->group(function () {
 
     /* ----------------------------------------------- Public (optional auth) */
     Route::middleware('auth.optional')->group(function () {
+        Route::get('search', [SearchController::class, 'index']);
         Route::get('explore', [PostController::class, 'explore']);
         Route::get('posts/{post}', [PostController::class, 'show']);
         Route::get('posts/{post}/comments', [CommentController::class, 'index']);
@@ -104,6 +106,7 @@ Route::prefix('v1')->group(function () {
         Route::post('vendors/register', [VendorController::class, 'register']);
         Route::prefix('vendor')->group(function () {
             Route::get('me', [VendorController::class, 'mine']);
+            Route::get('stats', [VendorController::class, 'stats']);
             Route::put('store', [VendorController::class, 'update']);
             Route::post('store/toggle-open', [VendorController::class, 'toggleOpen']);
             Route::apiResource('categories', MenuCategoryController::class)->only(['index', 'store', 'update', 'destroy']);
