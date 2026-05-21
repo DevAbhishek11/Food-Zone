@@ -93,9 +93,15 @@ Route::prefix('v1')->group(function () {
         Route::delete('notifications/{notification}', [NotificationController::class, 'destroy']);
         Route::delete('notifications', [NotificationController::class, 'clearAll']);
 
+        // Favorites
+        Route::get('favorites', [VendorController::class, 'favorites']);
+        Route::post('vendors/{vendor}/favorite', [VendorController::class, 'favorite']);
+        Route::delete('vendors/{vendor}/favorite', [VendorController::class, 'unfavorite']);
+
         // Orders (customers)
         Route::middleware('role:user,admin')->group(function () {
             Route::post('orders', [OrderController::class, 'store']);
+            Route::post('orders/{order}/reorder', [OrderController::class, 'reorder']);
         });
         Route::get('orders', [OrderController::class, 'index']);
         Route::get('orders/{order}', [OrderController::class, 'show']);

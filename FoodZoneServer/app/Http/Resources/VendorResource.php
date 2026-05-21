@@ -34,6 +34,7 @@ class VendorResource extends JsonResource
             'rating_avg' => (float) $this->rating_avg,
             'rating_count' => (int) $this->rating_count,
             'orders_count' => (int) $this->orders_count,
+            'is_favorited' => (bool) ($this->is_favorited ?? false),
             'commission_rate' => (float) $this->commission_rate,
             'categories' => MenuCategoryResource::collection($this->whenLoaded('categories')),
             'created_at' => $this->created_at?->toIso8601String(),

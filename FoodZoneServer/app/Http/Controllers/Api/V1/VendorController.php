@@ -26,6 +26,10 @@ class VendorController extends Controller
             ->when($request->filled('q'), fn ($q) => $q->where('name', 'like', '%'.$request->string('q').'%'))
             ->when($request->boolean('open_now'), fn ($q) => $q->where('is_open', true))
             ->when($request->filled('min_rating'), fn ($q) => $q->where('rating_avg', '>=', (float) $request->input('min_rating')))
+            ->when($request->boolean('favorites') && $request->user(), fn ($q) => $q->whereHas(
+                'favorites', fn ($f) => $f->where('user_id', $request->user()->id)
+            ))
+            ->tap(fn ($q) => $this->withFavoriteFlag($q, $request))
             ->orderByDesc('is_featured')
             ->orderByDesc('rating_avg')
             ->paginate(15);
@@ -33,17 +37,17 @@ class VendorController extends Controller
         return ApiResponse::paginated($vendors, VendorResource::class, 'Vendors loaded.');
     }
 
-    public function show(string $idOrSlug): JsonResponse
+    public function show(Request $request, string $idOrSlug): JsonResponse
     {
-        $vendor = $this->resolveVendor($idOrSlug);
+        $vendor = $this->resolveVendor($idOrSlug, $request);
 
         return ApiResponse::success(new VendorResource($vendor), 'Vendor retrieved.');
     }
 
     /** Full menu grouped by category (only available items shown to the public). */
-    public function menu(string $idOrSlug): JsonResponse
+    public function menu(Request $request, string $idOrSlug): JsonResponse
     {
-        $vendor = $this->resolveVendor($idOrSlug);
+        $vendor = $this->resolveVendor($idOrSlug, $request);
 
         $categories = $vendor->categories()
             ->where('status', 'approved')
@@ -190,13 +194,51 @@ class VendorController extends Controller
         ], 'Vendor stats.');
     }
 
+    /** Add/remove a vendor from the current user's favorites. */
+    public function favorite(Request $request, Vendor $vendor): JsonResponse
+    {
+        $request->user()->favorites()->firstOrCreate(['vendor_id' => $vendor->id]);
+
+        return ApiResponse::success(['is_favorited' => true], 'Added to favorites.');
+    }
+
+    public function unfavorite(Request $request, Vendor $vendor): JsonResponse
+    {
+        $request->user()->favorites()->where('vendor_id', $vendor->id)->delete();
+
+        return ApiResponse::success(['is_favorited' => false], 'Removed from favorites.');
+    }
+
+    /** The current user's favorited (approved) vendors. */
+    public function favorites(Request $request): JsonResponse
+    {
+        $vendors = Vendor::query()
+            ->where('status', VendorStatus::Approved->value)
+            ->whereHas('favorites', fn ($f) => $f->where('user_id', $request->user()->id))
+            ->tap(fn ($q) => $this->withFavoriteFlag($q, $request))
+            ->latest()
+            ->paginate(15);
+
+        return ApiResponse::paginated($vendors, VendorResource::class, 'Favorites loaded.');
+    }
+
     // ----------------------------------------------------------------
 
-    private function resolveVendor(string $idOrSlug): Vendor
+    private function resolveVendor(string $idOrSlug, ?Request $request = null): Vendor
     {
         return Vendor::where('status', VendorStatus::Approved->value)
             ->where(fn ($q) => $q->where('slug', $idOrSlug)->orWhere('id', (int) $idOrSlug))
+            ->tap(fn ($q) => $this->withFavoriteFlag($q, $request))
             ->firstOrFail();
+    }
+
+    /** Annotate a vendor query with `is_favorited` for the current user. */
+    private function withFavoriteFlag($query, ?Request $request): void
+    {
+        $userId = $request?->user()?->id;
+        if ($userId) {
+            $query->withExists(['favorites as is_favorited' => fn ($f) => $f->where('user_id', $userId)]);
+        }
     }
 
     private function ownedVendor(Request $request): Vendor

@@ -3,7 +3,9 @@
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { FavoriteButton } from "@/components/vendors/FavoriteButton";
 import { VendorReviews } from "@/components/vendors/VendorReviews";
+import { useAddresses } from "@/lib/hooks/use-addresses";
 import { ApiError } from "@/lib/api";
 import { useCartStore } from "@/lib/cart-store";
 import { money } from "@/lib/format";
@@ -61,6 +63,7 @@ export default function VendorMenuPage() {
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4">
           <h1 className="text-2xl font-semibold">{vendor.name}</h1>
+          <FavoriteButton vendorId={vendor.id} initial={vendor.is_favorited} size={20} />
           <span className="flex items-center gap-1 text-sm text-warning">
             <Star className="h-4 w-4 fill-current" />
             {vendor.rating_avg > 0 ? vendor.rating_avg.toFixed(1) : "New"}
@@ -169,7 +172,9 @@ function CartPanel({
   const router = useRouter();
   const cart = useCartStore();
   const placeOrder = usePlaceOrder();
+  const { data: addresses } = useAddresses();
   const [payment, setPayment] = useState<"cod" | "upi" | "card" | "wallet">(codEnabled ? "cod" : "upi");
+  const [addressId, setAddressId] = useState<number | null>(null);
 
   const isThisVendor = cart.vendorId === vendorId;
   const lines = isThisVendor ? cart.lines : [];
@@ -177,11 +182,15 @@ function CartPanel({
   const belowMin = subtotal < minOrder;
   const total = subtotal + (subtotal > 0 ? deliveryFee : 0);
 
+  // Default to the user's default address once loaded.
+  const effectiveAddressId = addressId ?? addresses?.find((a) => a.is_default)?.id ?? addresses?.[0]?.id ?? null;
+
   const checkout = async () => {
     try {
       const order = await placeOrder.mutateAsync({
         vendor_id: vendorId,
         payment_method: payment,
+        address_id: effectiveAddressId ?? undefined,
         items: lines.map((l) => ({ item_id: l.itemId, quantity: l.quantity })),
       });
       cart.clear();
@@ -223,6 +232,25 @@ function CartPanel({
             <Row label="Delivery" value={deliveryFee > 0 ? money(deliveryFee) : "Free"} />
             <Row label="Total" value={money(total)} bold />
           </div>
+
+          <label className="mt-3 block text-xs text-muted">Deliver to</label>
+          {addresses && addresses.length > 0 ? (
+            <select
+              value={effectiveAddressId ?? ""}
+              onChange={(e) => setAddressId(Number(e.target.value))}
+              className="mt-1 h-9 w-full rounded-lg border border-line bg-bg px-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/60"
+            >
+              {addresses.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.label} — {a.city} {a.pincode}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <Link href="/addresses" className="mt-1 block text-sm text-brand hover:underline">
+              + Add a delivery address
+            </Link>
+          )}
 
           <label className="mt-3 block text-xs text-muted">Payment</label>
           <select

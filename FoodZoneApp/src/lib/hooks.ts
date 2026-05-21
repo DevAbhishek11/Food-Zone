@@ -1,7 +1,17 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from './api';
-import type { ApiEnvelope, AppNotification, Order, Post, Review, User, Vendor, VendorMenu } from './types';
+import type { Address, ApiEnvelope, AppNotification, Order, Post, Review, User, Vendor, VendorMenu } from './types';
+
+export interface AddressInput {
+  label?: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  landmark?: string;
+  is_default?: boolean;
+}
 
 function nextPage<T>(last: ApiEnvelope<T>) {
   return last.meta?.has_more ? last.meta.current_page + 1 : undefined;
@@ -65,6 +75,25 @@ export function useVendorMenu(idOrSlug: string) {
   });
 }
 
+export function useToggleFavorite() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['vendor-menu'] });
+    qc.invalidateQueries({ queryKey: ['vendors'] });
+  };
+  const favorite = useMutation({ mutationFn: (vendorId: number) => api.post(`/vendors/${vendorId}/favorite`), onSuccess: invalidate });
+  const unfavorite = useMutation({ mutationFn: (vendorId: number) => api.del(`/vendors/${vendorId}/favorite`), onSuccess: invalidate });
+  return { favorite, unfavorite };
+}
+
+export function useReorder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orderId: number) => api.post<Order>(`/orders/${orderId}/reorder`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
+  });
+}
+
 export function useVendorReviews(idOrSlug: string) {
   return useInfiniteQuery({
     queryKey: ['vendor-reviews', idOrSlug],
@@ -85,6 +114,7 @@ export function useRateOrder(orderId: number) {
 export interface PlaceOrderInput {
   vendor_id: number;
   payment_method: 'cod' | 'upi' | 'card' | 'wallet';
+  address_id?: number;
   items: { item_id: number; quantity: number }[];
 }
 
@@ -94,6 +124,22 @@ export function usePlaceOrder() {
     mutationFn: (input: PlaceOrderInput) => api.post<Order>('/orders', input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
   });
+}
+
+export function useAddresses() {
+  return useQuery({ queryKey: ['addresses'], queryFn: () => api.get<Address[]>('/addresses'), select: (e) => e.data });
+}
+
+export function useSaveAddress() {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['addresses'] });
+  const create = useMutation({ mutationFn: (body: AddressInput) => api.post<Address>('/addresses', body), onSuccess: invalidate });
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: AddressInput }) => api.put<Address>(`/addresses/${id}`, body),
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({ mutationFn: (id: number) => api.del(`/addresses/${id}`), onSuccess: invalidate });
+  return { create, update, remove };
 }
 
 export function useOrders() {

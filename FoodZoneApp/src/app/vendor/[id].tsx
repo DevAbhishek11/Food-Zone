@@ -5,13 +5,14 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorView, Loading } from '@/components/ui';
+import { FavoriteHeart } from '@/components/favorite-heart';
 import { VendorReviews } from '@/components/vendor-reviews';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCartStore } from '@/lib/cart-store';
 import { ApiError } from '@/lib/api';
 import { money } from '@/lib/format';
-import { usePlaceOrder, useVendorMenu } from '@/lib/hooks';
+import { useAddresses, usePlaceOrder, useVendorMenu } from '@/lib/hooks';
 import type { MenuItem, Vendor } from '@/lib/types';
 
 export default function VendorMenuScreen() {
@@ -19,6 +20,7 @@ export default function VendorMenuScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading, isError, refetch } = useVendorMenu(id);
+  const { data: addresses } = useAddresses();
   const cart = useCartStore();
   const placeOrder = usePlaceOrder();
 
@@ -49,11 +51,14 @@ export default function VendorMenuScreen() {
   const belowMin = subtotal < vendor.min_order_value;
   const total = subtotal + (subtotal > 0 ? vendor.delivery_fee : 0);
 
+  const deliveryAddress = addresses?.find((a) => a.is_default) ?? addresses?.[0] ?? null;
+
   const checkout = async () => {
     try {
       const order = await placeOrder.mutateAsync({
         vendor_id: vendor.id,
         payment_method: vendor.cod_enabled ? 'cod' : 'upi',
+        address_id: deliveryAddress?.id,
         items: cart.lines.map((l) => ({ item_id: l.itemId, quantity: l.quantity })),
       });
       cart.clear();
@@ -74,6 +79,7 @@ export default function VendorMenuScreen() {
         <Text numberOfLines={1} style={{ color: c.text, fontSize: 18, fontWeight: '700', flex: 1 }}>
           {vendor.name}
         </Text>
+        <FavoriteHeart vendorId={vendor.id} initial={vendor.is_favorited} />
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: count > 0 ? 96 : Spacing.four }}>
@@ -117,6 +123,12 @@ export default function VendorMenuScreen() {
 
       {count > 0 && (
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: Spacing.three, backgroundColor: c.card, borderTopWidth: 1, borderTopColor: c.border, gap: Spacing.two }}>
+          <Pressable onPress={() => router.push('/addresses')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="location-outline" size={14} color={c.textSecondary} />
+            <Text style={{ color: c.textSecondary, fontSize: 12 }}>
+              {deliveryAddress ? `Deliver to ${deliveryAddress.label} · ${deliveryAddress.city}` : 'Add a delivery address'}
+            </Text>
+          </Pressable>
           {belowMin && (
             <Text style={{ color: c.warning, fontSize: 12 }}>
               Add {money(vendor.min_order_value - subtotal)} more to reach the minimum order.

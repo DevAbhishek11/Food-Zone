@@ -1,19 +1,23 @@
 import { useState } from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Badge, EmptyView, ErrorView, Loading } from '@/components/ui';
+import { Badge, Button, EmptyView, ErrorView, Loading } from '@/components/ui';
 import { RateOrderModal } from '@/components/rate-order-modal';
 import { Stars } from '@/components/stars';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { ApiError } from '@/lib/api';
 import { money, timeAgo } from '@/lib/format';
-import { useOrders } from '@/lib/hooks';
+import { useOrders, useReorder } from '@/lib/hooks';
 import type { Order } from '@/lib/types';
+
+const TERMINAL = ['delivered', 'cancelled', 'rejected'];
 
 export default function OrdersScreen() {
   const c = useTheme();
   const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage } = useOrders();
+  const reorder = useReorder();
   const orders = data?.pages.flatMap((p) => p.data) ?? [];
   const [rating, setRating] = useState<{ id: number; vendor: string } | null>(null);
 
@@ -60,18 +64,30 @@ export default function OrdersScreen() {
                 <Text style={{ color: c.text, fontWeight: '700' }}>{money(item.total)}</Text>
               </View>
 
-              {item.status === 'delivered' && (
-                <View style={{ borderTopWidth: 1, borderTopColor: c.border, marginTop: Spacing.two, paddingTop: Spacing.two }}>
-                  {item.rating ? (
+              {TERMINAL.includes(item.status) && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: c.border, marginTop: Spacing.two, paddingTop: Spacing.two }}>
+                  {item.status === 'delivered' && item.rating ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
                       <Stars value={item.rating.rating} />
                       <Text style={{ color: c.textSecondary, fontSize: 12 }}>Your rating</Text>
                     </View>
-                  ) : (
+                  ) : item.status === 'delivered' ? (
                     <Pressable onPress={() => setRating({ id: item.id, vendor: item.vendor?.name ?? 'this order' })}>
                       <Text style={{ color: c.brand, fontWeight: '600' }}>Rate order</Text>
                     </Pressable>
+                  ) : (
+                    <View />
                   )}
+                  <Button
+                    title="Reorder"
+                    loading={reorder.isPending}
+                    onPress={() =>
+                      reorder.mutate(item.id, {
+                        onSuccess: () => Alert.alert('Reorder placed', 'Your reorder has been placed.'),
+                        onError: (e) => Alert.alert('Could not reorder', e instanceof ApiError ? e.message : 'Try again.'),
+                      })
+                    }
+                  />
                 </View>
               )}
             </View>

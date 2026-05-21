@@ -4,7 +4,8 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuthStore } from "@/lib/auth-store";
-import { BadgeCheck, LogOut, Mail } from "lucide-react";
+import { BadgeCheck, ChevronRight, LogOut, Mail, MapPin } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
@@ -59,6 +60,15 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
+
+        <Link
+          href="/addresses"
+          className="flex items-center gap-3 rounded-card border border-line bg-bg-soft p-4 hover:bg-surface"
+        >
+          <MapPin className="h-5 w-5 text-muted" />
+          <span className="flex-1 text-sm font-medium">Delivery addresses</span>
+          <ChevronRight className="h-4 w-4 text-muted" />
+        </Link>
 
         <Button
           variant="danger"

@@ -56,6 +56,8 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <Button title="Delivery addresses" variant="secondary" fullWidth onPress={() => router.push('/addresses')} />
+
         {user.role === 'vendor' && (
           <Button title="Manage store" variant="secondary" fullWidth onPress={() => router.push('/manage')} />
         )}

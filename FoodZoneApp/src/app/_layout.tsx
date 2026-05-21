@@ -54,6 +54,7 @@ function RootNavigator() {
       <Stack.Screen name="manage/reviews" options={{ presentation: 'card' }} />
       <Stack.Screen name="admin/index" options={{ presentation: 'card' }} />
       <Stack.Screen name="search" options={{ presentation: 'card' }} />
+      <Stack.Screen name="addresses" options={{ presentation: 'card' }} />
     </Stack>
   );
 }

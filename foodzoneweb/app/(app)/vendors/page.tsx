@@ -6,7 +6,8 @@ import { EmptyState, ErrorState } from "@/components/ui/States";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { VendorCard } from "@/components/vendors/VendorCard";
 import { useVendors } from "@/lib/hooks/use-vendors";
-import { Search } from "lucide-react";
+import { Heart, Search } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 export default function VendorsPage() {
@@ -19,7 +20,15 @@ export default function VendorsPage() {
 
   return (
     <>
-      <PageHeader title="Order Food" subtitle="Discover restaurants near you" />
+      <PageHeader
+        title="Order Food"
+        subtitle="Discover restaurants near you"
+        action={
+          <Link href="/favorites" className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface hover:text-content">
+            <Heart className="h-4 w-4" /> Saved
+          </Link>
+        }
+      />
 
       <div className="mx-auto w-full max-w-5xl space-y-5 p-4 md:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

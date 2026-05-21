@@ -7,6 +7,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-q
 export interface PlaceOrderInput {
   vendor_id: number;
   payment_method: "cod" | "upi" | "card" | "wallet";
+  address_id?: number;
   notes?: string;
   items: { item_id: number; quantity: number }[];
 }

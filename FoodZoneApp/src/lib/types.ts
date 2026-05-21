@@ -67,6 +67,17 @@ export interface PostMedia {
   sort_order: number;
 }
 
+export interface Address {
+  id: number;
+  label: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  landmark: string | null;
+  is_default: boolean;
+}
+
 export interface Post {
   id: number;
   body: string | null;
@@ -132,6 +143,7 @@ export interface Vendor {
   is_featured: boolean;
   rating_avg: number;
   rating_count: number;
+  is_favorited?: boolean;
 }
 
 export interface VendorMenu {

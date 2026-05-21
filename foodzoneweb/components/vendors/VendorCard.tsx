@@ -2,6 +2,7 @@ import { money } from "@/lib/format";
 import type { Vendor } from "@/lib/types";
 import { Star, Clock, MapPin } from "lucide-react";
 import Link from "next/link";
+import { FavoriteButton } from "./FavoriteButton";
 
 export function VendorCard({ vendor }: { vendor: Vendor }) {
   return (
@@ -28,6 +29,7 @@ export function VendorCard({ vendor }: { vendor: Vendor }) {
             Featured
           </span>
         )}
+        <FavoriteButton vendorId={vendor.id} initial={vendor.is_favorited} className="absolute bottom-2 right-2" />
       </div>
 
       <div className="flex flex-1 flex-col gap-1.5 p-3">

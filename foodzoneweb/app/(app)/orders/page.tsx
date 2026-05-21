@@ -6,11 +6,17 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Stars } from "@/components/ui/Stars";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { money, timeAgo } from "@/lib/format";
+import { useReorder } from "@/lib/hooks/use-favorites";
 import { useOrders } from "@/lib/hooks/use-orders";
+import { toast } from "@/lib/toast-store";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+const TERMINAL = ["delivered", "cancelled", "rejected"];
 
 const STATUS_STYLE: Record<string, string> = {
   pending: "bg-warning/15 text-warning",
@@ -24,9 +30,21 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default function OrdersPage() {
+  const router = useRouter();
   const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useOrders();
   const orders = data?.pages.flatMap((p) => p.data) ?? [];
   const [rating, setRating] = useState<{ id: number; vendor: string } | null>(null);
+  const reorder = useReorder();
+
+  const doReorder = async (orderId: number) => {
+    try {
+      const res = await reorder.mutateAsync(orderId);
+      toast.success(`Reorder placed — ${res.data.order_number}`);
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not reorder.");
+    }
+  };
 
   return (
     <>
@@ -61,18 +79,23 @@ export default function OrdersPage() {
                   <span className="font-semibold">{money(o.total)}</span>
                 </div>
 
-                {o.status === "delivered" && (
-                  <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-                    {o.rating ? (
+                {TERMINAL.includes(o.status) && (
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
+                    {o.status === "delivered" && o.rating ? (
                       <div className="flex items-center gap-2">
                         <Stars value={o.rating.rating} />
                         <span className="text-xs text-muted">Your rating</span>
                       </div>
-                    ) : (
+                    ) : o.status === "delivered" ? (
                       <Button size="sm" variant="secondary" onClick={() => setRating({ id: o.id, vendor: o.vendor?.name ?? "this order" })}>
                         Rate order
                       </Button>
+                    ) : (
+                      <span />
                     )}
+                    <Button size="sm" loading={reorder.isPending} onClick={() => doReorder(o.id)}>
+                      Reorder
+                    </Button>
                   </div>
                 )}
               </div>

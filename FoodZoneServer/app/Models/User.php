@@ -106,6 +106,11 @@ class User extends Authenticatable
         return $this->hasMany(Block::class, 'blocker_id');
     }
 
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(Favorite::class);
+    }
+
     // ----------------------------------------------------------------
     // Helpers
     // ----------------------------------------------------------------

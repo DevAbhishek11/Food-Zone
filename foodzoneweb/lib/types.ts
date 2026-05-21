@@ -157,6 +157,7 @@ export interface Vendor {
   rating_avg: number;
   rating_count: number;
   orders_count: number;
+  is_favorited?: boolean;
   commission_rate: number;
   categories?: MenuCategory[];
 }
@@ -207,6 +208,19 @@ export interface Review {
   vendor_reply: string | null;
   vendor_replied_at: string | null;
   created_at: string;
+}
+
+export interface Address {
+  id: number;
+  label: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  landmark: string | null;
+  lat: number | null;
+  lng: number | null;
+  is_default: boolean;
 }
 
 export interface NotificationActor {

@@ -75,6 +75,11 @@ class Vendor extends Model
         return $this->hasMany(Voucher::class);
     }
 
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(Favorite::class);
+    }
+
     public function isApproved(): bool
     {
         return $this->status === VendorStatus::Approved;

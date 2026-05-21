@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\OrderStatus;
+use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
+use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\UserAddress;
 use App\Services\NotificationService;
 use App\Services\OrderService;
 use App\Support\ApiResponse;
@@ -136,6 +139,52 @@ class OrderController extends Controller
             "Order {$order->order_number} was cancelled by the customer.", ['order_id' => $order->id]);
 
         return ApiResponse::success(new OrderResource($order->fresh()), 'Order cancelled.');
+    }
+
+    /** Re-place a past order, rebuilding from its still-available items at current prices. */
+    public function reorder(Request $request, Order $order, OrderService $orders): JsonResponse
+    {
+        if ($order->user_id !== $request->user()->id) {
+            abort(403, 'You can only reorder your own orders.');
+        }
+
+        $order->load('items');
+        $itemIds = $order->items->pluck('item_id')->filter()->all();
+
+        $availableIds = MenuItem::whereIn('id', $itemIds)
+            ->where('vendor_id', $order->vendor_id)
+            ->where('is_available', true)
+            ->pluck('id')
+            ->all();
+
+        $items = $order->items
+            ->filter(fn ($i) => in_array($i->item_id, $availableIds, true))
+            ->map(fn ($i) => ['item_id' => $i->item_id, 'quantity' => $i->quantity])
+            ->values()
+            ->all();
+
+        if (empty($items)) {
+            throw ApiException::make('None of the items from this order are available anymore.', 422);
+        }
+
+        // Reuse the original address only if it still belongs to the user.
+        $addressId = $order->address_id !== null
+            && UserAddress::where('id', $order->address_id)->where('user_id', $request->user()->id)->exists()
+                ? $order->address_id
+                : null;
+
+        $new = $orders->place($request->user(), [
+            'vendor_id' => $order->vendor_id,
+            'payment_method' => $order->payment_method,
+            'address_id' => $addressId,
+            'items' => $items,
+        ]);
+
+        return ApiResponse::success(
+            new OrderResource($new->load(['items', 'vendor'])),
+            'Reorder placed successfully.',
+            201
+        );
     }
 
     /** Customer rates a delivered order (once). */
