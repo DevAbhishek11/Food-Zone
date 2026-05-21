@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+/*
+ * FoodZone design system — dark-theme first (spec §20.2).
+ * Tokens are exposed as Tailwind utilities, e.g. bg-surface, text-brand,
+ * border-line, text-muted.
+ */
+@theme {
+  --color-bg: #0a0a0a;
+  --color-bg-soft: #111827;
+  --color-surface: #1f2937;
+  --color-surface-hover: #273244;
+  --color-line: #374151;
+  --color-content: #f9fafb;
+  --color-muted: #9ca3af;
+
+  --color-brand: #ff6b35;
+  --color-brand-hover: #ff8159;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-card: 1rem;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-content);
+  font-family: var(--font-sans);
+}
+
+/* Thin, themed scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+/* Shimmer for skeleton loaders (spec §20.3) */
+@keyframes fz-shimmer {
+  0% { background-position: -468px 0; }
+  100% { background-position: 468px 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    var(--color-surface-hover) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 936px 100%;
+  animation: fz-shimmer 1.4s infinite linear;
+}

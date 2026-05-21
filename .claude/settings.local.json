@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php --version)",
+      "Bash(composer --version)",
+      "Bash(npm --version)",
+      "Bash(mysql --version)",
+      "Bash(redis-cli --version)",
+      "Bash(npx expo *)",
+      "Bash(php artisan *)",
+      "Bash(mysql -u root -pAdmin@1120 -e \"CREATE DATABASE IF NOT EXISTS foodzoneserver CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\")",
+      "Bash(cd *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(node -e \"const r=require\\('expo-router'\\); console.log\\(Object.keys\\(r\\).sort\\(\\).join\\(', '\\)\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(echo \"exit: $?\")"
+    ]
+  }
+}

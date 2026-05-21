@@ -1,0 +1,76 @@
+"use client";
+
+import { Avatar } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { useAuthStore } from "@/lib/auth-store";
+import { BadgeCheck, LogOut, Mail } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+export default function ProfilePage() {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+
+  if (!user) return null;
+
+  const stats = [
+    { label: "Posts", value: user.profile?.posts_count ?? 0 },
+    { label: "Followers", value: user.profile?.followers_count ?? 0 },
+    { label: "Following", value: user.profile?.following_count ?? 0 },
+  ];
+
+  return (
+    <>
+      <PageHeader title="Profile" />
+
+      <div className="mx-auto w-full max-w-2xl space-y-4 p-4">
+        <div className="rounded-card border border-line bg-bg-soft p-6">
+          <div className="flex items-center gap-4">
+            <Avatar src={user.profile?.avatar} name={user.name} size={72} />
+            <div className="min-w-0">
+              <h2 className="flex items-center gap-1.5 text-xl font-semibold">
+                {user.name}
+                {user.email_verified && <BadgeCheck className="h-5 w-5 text-info" />}
+              </h2>
+              <p className="text-sm text-muted">@{user.username}</p>
+              <span className="mt-1 inline-block rounded-full bg-surface px-2 py-0.5 text-xs capitalize text-muted">
+                {user.role}
+              </span>
+            </div>
+          </div>
+
+          {user.profile?.bio && <p className="mt-4 text-sm text-content">{user.profile.bio}</p>}
+
+          <div className="mt-4 flex items-center gap-2 text-sm text-muted">
+            <Mail className="h-4 w-4" />
+            {user.email}
+            {!user.email_verified && (
+              <span className="rounded bg-warning/15 px-1.5 py-0.5 text-xs text-warning">Unverified</span>
+            )}
+          </div>
+
+          <div className="mt-5 grid grid-cols-3 gap-2 border-t border-line pt-5">
+            {stats.map((s) => (
+              <div key={s.label} className="text-center">
+                <p className="text-lg font-semibold">{s.value}</p>
+                <p className="text-xs text-muted">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Button
+          variant="danger"
+          className="w-full"
+          onClick={async () => {
+            await logout();
+            router.replace("/login");
+          }}
+        >
+          <LogOut className="h-4 w-4" /> Log out
+        </Button>
+      </div>
+    </>
+  );
+}

@@ -1,0 +1,222 @@
+<?php
+
+namespace App\Services;
+
+use App\Enums\OrderStatus;
+use App\Exceptions\ApiException;
+use App\Models\ItemAddon;
+use App\Models\ItemVariant;
+use App\Models\MenuItem;
+use App\Models\Order;
+use App\Models\User;
+use App\Models\UserAddress;
+use App\Models\Vendor;
+use App\Models\Voucher;
+use App\Models\VoucherRedemption;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class OrderService
+{
+    public function __construct(private NotificationService $notifications) {}
+
+    /**
+     * Place an order. $payload keys: vendor_id, address_id?, payment_method,
+     * voucher_code?, notes?, items[] = {item_id, quantity, variant_id?, addon_ids?[]}.
+     *
+     * @throws ApiException
+     */
+    public function place(User $user, array $payload): Order
+    {
+        /** @var Vendor $vendor */
+        $vendor = Vendor::find($payload['vendor_id']);
+
+        if (! $vendor) {
+            throw ApiException::make('Vendor not found.', 404);
+        }
+        if (! $vendor->isApproved()) {
+            throw ApiException::make('This vendor is not currently available.', 422);
+        }
+        if (! $vendor->is_open) {
+            throw ApiException::make('This store is closed and not accepting orders right now.', 422);
+        }
+
+        // Resolve & validate items belonging to the vendor.
+        $itemIds = collect($payload['items'])->pluck('item_id')->unique();
+        $menuItems = MenuItem::whereIn('id', $itemIds)->where('vendor_id', $vendor->id)->get()->keyBy('id');
+
+        if ($menuItems->count() !== $itemIds->count()) {
+            throw ApiException::make('One or more items are invalid for this vendor.', 422);
+        }
+
+        $lines = [];
+        $subtotal = 0.0;
+
+        foreach ($payload['items'] as $line) {
+            /** @var MenuItem $item */
+            $item = $menuItems[$line['item_id']];
+
+            if (! $item->is_available) {
+                throw ApiException::make("\"{$item->name}\" is currently unavailable.", 422);
+            }
+
+            $quantity = (int) $line['quantity'];
+            $unitPrice = (float) $item->price;
+            $customizations = [];
+
+            // Variant
+            if (! empty($line['variant_id'])) {
+                $variant = ItemVariant::where('id', $line['variant_id'])->where('item_id', $item->id)->first();
+                if (! $variant) {
+                    throw ApiException::make('Invalid variant for item '.$item->name.'.', 422);
+                }
+                $unitPrice += (float) $variant->price_modifier;
+                $customizations['variant'] = ['id' => $variant->id, 'name' => $variant->name];
+            }
+
+            // Add-ons
+            if (! empty($line['addon_ids'])) {
+                $addons = ItemAddon::whereIn('id', $line['addon_ids'])
+                    ->where('item_id', $item->id)->where('is_available', true)->get();
+                if ($addons->count() !== count($line['addon_ids'])) {
+                    throw ApiException::make('One or more add-ons are invalid for '.$item->name.'.', 422);
+                }
+                foreach ($addons as $addon) {
+                    $unitPrice += (float) $addon->price;
+                    $customizations['addons'][] = ['id' => $addon->id, 'name' => $addon->name, 'price' => (float) $addon->price];
+                }
+            }
+
+            $lineTotal = round($unitPrice * $quantity, 2);
+            $subtotal += $lineTotal;
+
+            $lines[] = [
+                'item_id' => $item->id,
+                'item_name' => $item->name,
+                'quantity' => $quantity,
+                'unit_price' => round($unitPrice, 2),
+                'line_total' => $lineTotal,
+                'customizations' => $customizations ?: null,
+            ];
+        }
+
+        $subtotal = round($subtotal, 2);
+
+        if ($subtotal < (float) $vendor->min_order_value) {
+            throw ApiException::make(
+                'Minimum order value for this store is '.number_format((float) $vendor->min_order_value, 2).'.',
+                422
+            );
+        }
+
+        // Payment method validation
+        $paymentMethod = $payload['payment_method'] ?? 'cod';
+        if ($paymentMethod === 'cod' && ! $vendor->cod_enabled) {
+            throw ApiException::make('This store does not accept cash on delivery.', 422);
+        }
+
+        // Delivery address snapshot
+        $addressSnapshot = null;
+        $addressId = $payload['address_id'] ?? null;
+        if ($addressId) {
+            $address = UserAddress::where('id', $addressId)->where('user_id', $user->id)->first();
+            if (! $address) {
+                throw ApiException::make('Selected address not found.', 422);
+            }
+            $addressSnapshot = $address->only(['label', 'address', 'city', 'state', 'pincode', 'landmark', 'lat', 'lng']);
+        }
+
+        // Delivery charge
+        $deliveryCharge = 0.0;
+        if ($vendor->delivery_enabled) {
+            $deliveryCharge = (float) $vendor->delivery_fee;
+            if ($vendor->free_delivery_above !== null && $subtotal >= (float) $vendor->free_delivery_above) {
+                $deliveryCharge = 0.0;
+            }
+        }
+
+        // Voucher
+        $discount = 0.0;
+        $voucher = null;
+        if (! empty($payload['voucher_code'])) {
+            $voucher = Voucher::where('code', $payload['voucher_code'])->first();
+            if (! $voucher) {
+                throw ApiException::make('Invalid voucher code.', 422);
+            }
+            if ($error = $voucher->validateFor($user, $subtotal, $vendor->id)) {
+                throw ApiException::make($error, 422);
+            }
+            $discount = $voucher->discountFor($subtotal);
+        }
+
+        $tax = 0.0;
+        $total = round($subtotal - $discount + $deliveryCharge + $tax, 2);
+        $commission = round($subtotal * ((float) $vendor->commission_rate / 100), 2);
+
+        return DB::transaction(function () use (
+            $user, $vendor, $lines, $subtotal, $discount, $deliveryCharge, $tax,
+            $total, $commission, $paymentMethod, $voucher, $payload, $addressId, $addressSnapshot
+        ) {
+            $order = Order::create([
+                'order_number' => $this->generateOrderNumber(),
+                'user_id' => $user->id,
+                'vendor_id' => $vendor->id,
+                'address_id' => $addressId,
+                'status' => OrderStatus::Pending->value,
+                'subtotal' => $subtotal,
+                'discount' => $discount,
+                'delivery_charge' => $deliveryCharge,
+                'tax' => $tax,
+                'total' => $total,
+                'commission' => $commission,
+                'payment_method' => $paymentMethod,
+                'payment_status' => 'pending',
+                'voucher_id' => $voucher?->id,
+                'notes' => $payload['notes'] ?? null,
+                'delivery_address' => $addressSnapshot,
+            ]);
+
+            foreach ($lines as $line) {
+                $order->items()->create($line);
+                MenuItem::where('id', $line['item_id'])->increment('orders_count', $line['quantity']);
+            }
+
+            $order->statusHistory()->create([
+                'status' => OrderStatus::Pending->value,
+                'changed_by' => $user->id,
+                'note' => 'Order placed.',
+            ]);
+
+            if ($voucher) {
+                VoucherRedemption::create([
+                    'voucher_id' => $voucher->id,
+                    'user_id' => $user->id,
+                    'order_id' => $order->id,
+                    'discount_applied' => $discount,
+                ]);
+                $voucher->increment('used_count');
+            }
+
+            $vendor->increment('orders_count');
+
+            $this->notifications->notify(
+                $vendor->user_id,
+                'order_placed',
+                'New order received',
+                "Order {$order->order_number} for ".number_format($total, 2).'.',
+                ['order_id' => $order->id],
+            );
+
+            return $order;
+        });
+    }
+
+    private function generateOrderNumber(): string
+    {
+        do {
+            $number = 'FZ-'.now()->format('ymd').'-'.strtoupper(Str::random(6));
+        } while (Order::where('order_number', $number)->exists());
+
+        return $number;
+    }
+}
