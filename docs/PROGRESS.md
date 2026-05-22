@@ -5,7 +5,7 @@ delivered across all relevant tiers and verified (`php artisan test` / web `buil
 / mobile `tsc`+`expo lint`+`expo export`). Per-phase detail lives in `WORKPHASE-N.md`;
 the index is `WORKPHASES.md`.
 
-_Last updated: 2026-05-20 · Backend tests: **76** · Mobile routes: **21**_
+_Last updated: 2026-05-20 · Backend tests: **85** · Mobile routes: **22** · Production roadmap: [ROADMAP.md](ROADMAP.md)_
 
 ---
 
@@ -32,6 +32,12 @@ _Last updated: 2026-05-20 · Backend tests: **76** · Mobile routes: **21**_
 - [x] **P9 — Search & discovery**: combined + typed search across people/restaurants/posts.
 - [x] **P10 — Favorites & reorder**: save vendors, `is_favorited` flag, one-tap reorder.
 - [x] **P11 — Address book**: manage delivery addresses, select at checkout (order snapshots it).
+
+### Production-grade (P12+)
+- [x] **P12 — Admin dashboard (enterprise)**: analytics + charts (Recharts), order
+  monitoring table, bulk user actions, CSV export. _(Backend + Web)_
+- [x] **P13 — Vendor dashboard (business-ready)**: sales analytics + charts, operating-hours
+  editor, menu variants/add-ons editor, order timelines. _(Backend + Web + Mobile)_
 
 ---
 

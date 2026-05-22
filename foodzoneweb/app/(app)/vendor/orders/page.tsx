@@ -7,8 +7,11 @@ import { EmptyState, ErrorState } from "@/components/ui/States";
 import { VendorNav } from "@/components/vendor/VendorNav";
 import { cn } from "@/lib/cn";
 import { money, timeAgo } from "@/lib/format";
-import { useUpdateOrderStatus, useVendorOrders } from "@/lib/hooks/use-vendor-admin";
+import { useUpdateOrderStatus, useVendorOrderDetail, useVendorOrders } from "@/lib/hooks/use-vendor-admin";
 import { toast } from "@/lib/toast-store";
+import type { Order } from "@/lib/types";
+import { ChevronDown } from "lucide-react";
+import { useState } from "react";
 
 type Action = { label: string; status: string; variant: "primary" | "secondary" | "danger" };
 
@@ -62,39 +65,7 @@ export default function VendorOrdersPage() {
         ) : (
           <>
             {orders.map((o) => (
-              <div key={o.id} className="rounded-card border border-line bg-bg-soft p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{o.order_number}</p>
-                    <p className="text-xs text-muted">{timeAgo(o.created_at)} · {o.payment_method.toUpperCase()}</p>
-                  </div>
-                  <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium capitalize", STATUS_STYLE[o.status] ?? "bg-info/15 text-info")}>
-                    {o.status.replace(/_/g, " ")}
-                  </span>
-                </div>
-
-                {o.items && o.items.length > 0 && (
-                  <ul className="mt-3 space-y-1 border-t border-line pt-3 text-sm text-muted">
-                    {o.items.map((it) => (
-                      <li key={it.id} className="flex justify-between">
-                        <span>{it.quantity}× {it.item_name}</span>
-                        <span>{money(it.line_total)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-                  <span className="font-semibold">{money(o.total)}</span>
-                  <div className="flex gap-2">
-                    {(NEXT_ACTIONS[o.status] ?? []).map((a) => (
-                      <Button key={a.status} size="sm" variant={a.variant} loading={updateStatus.isPending} onClick={() => advance(o.id, a.status)}>
-                        {a.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <VendorOrderCard key={o.id} order={o} advancing={updateStatus.isPending} onAdvance={advance} />
             ))}
             {hasNextPage && (
               <div className="flex justify-center">
@@ -105,5 +76,69 @@ export default function VendorOrdersPage() {
         )}
       </div>
     </>
+  );
+}
+
+function VendorOrderCard({ order: o, advancing, onAdvance }: { order: Order; advancing: boolean; onAdvance: (id: number, status: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const detail = useVendorOrderDetail(open ? o.id : null);
+
+  return (
+    <div className="rounded-card border border-line bg-bg-soft p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-medium">{o.order_number}</p>
+          <p className="text-xs text-muted">
+            {timeAgo(o.created_at)} · {o.payment_method.toUpperCase()}
+            {o.customer ? ` · @${o.customer.username}` : ""}
+          </p>
+        </div>
+        <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium capitalize", STATUS_STYLE[o.status] ?? "bg-info/15 text-info")}>
+          {o.status.replace(/_/g, " ")}
+        </span>
+      </div>
+
+      {o.items && o.items.length > 0 && (
+        <ul className="mt-3 space-y-1 border-t border-line pt-3 text-sm text-muted">
+          {o.items.map((it) => (
+            <li key={it.id} className="flex justify-between">
+              <span>{it.quantity}× {it.item_name}</span>
+              <span>{money(it.line_total)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+        <span className="font-semibold">{money(o.total)}</span>
+        <div className="flex gap-2">
+          {(NEXT_ACTIONS[o.status] ?? []).map((a) => (
+            <Button key={a.status} size="sm" variant={a.variant} loading={advancing} onClick={() => onAdvance(o.id, a.status)}>
+              {a.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={() => setOpen((v) => !v)} className="mt-2 flex items-center gap-1 text-xs text-muted hover:text-content">
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} /> Timeline
+      </button>
+      {open && (
+        <ol className="mt-2 space-y-2 border-t border-line pt-3">
+          {detail.isLoading && <li className="text-xs text-muted">Loading…</li>}
+          {detail.data?.status_history?.length === 0 && <li className="text-xs text-muted">No history.</li>}
+          {detail.data?.status_history?.map((h, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs">
+              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" />
+              <div>
+                <span className="font-medium capitalize text-content">{h.status.replace(/_/g, " ")}</span>
+                {h.note && <span className="text-muted"> — {h.note}</span>}
+                <span className="block text-muted">{timeAgo(h.at)}</span>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
   );
 }

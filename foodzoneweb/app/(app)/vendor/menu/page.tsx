@@ -162,6 +162,12 @@ function ItemForm({
   const [price, setPrice] = useState(item?.price != null ? String(item.price) : "");
   const [description, setDescription] = useState(item?.description ?? "");
   const [categoryId, setCategoryId] = useState<string>(item?.category_id ? String(item.category_id) : "");
+  const [variants, setVariants] = useState<{ name: string; price_modifier: string }[]>(
+    item?.variants?.map((v) => ({ name: v.name, price_modifier: String(v.price_modifier) })) ?? [],
+  );
+  const [addons, setAddons] = useState<{ name: string; price: string }[]>(
+    item?.addons?.map((a) => ({ name: a.name, price: String(a.price) })) ?? [],
+  );
 
   const submit = () => {
     const p = parseFloat(price);
@@ -174,6 +180,8 @@ function ItemForm({
       price: p,
       description: description.trim() || undefined,
       category_id: categoryId ? Number(categoryId) : null,
+      variants: variants.filter((v) => v.name.trim()).map((v) => ({ name: v.name.trim(), price_modifier: parseFloat(v.price_modifier) || 0 })),
+      addons: addons.filter((a) => a.name.trim()).map((a) => ({ name: a.name.trim(), price: parseFloat(a.price) || 0 })),
     });
   };
 
@@ -197,10 +205,78 @@ function ItemForm({
           ))}
         </select>
       </div>
+      {/* Variants */}
+      <RowEditor
+        label="Variants (e.g. Small / Large)"
+        rows={variants}
+        cols={[
+          { key: "name", placeholder: "Name", flex: true },
+          { key: "price_modifier", placeholder: "+/- price", type: "number" },
+        ]}
+        onAdd={() => setVariants((v) => [...v, { name: "", price_modifier: "0" }])}
+        onChange={(i, key, val) => setVariants((v) => v.map((r, idx) => (idx === i ? { ...r, [key]: val } : r)))}
+        onRemove={(i) => setVariants((v) => v.filter((_, idx) => idx !== i))}
+      />
+
+      {/* Add-ons */}
+      <RowEditor
+        label="Add-ons (e.g. Extra cheese)"
+        rows={addons}
+        cols={[
+          { key: "name", placeholder: "Name", flex: true },
+          { key: "price", placeholder: "Price", type: "number" },
+        ]}
+        onAdd={() => setAddons((a) => [...a, { name: "", price: "0" }])}
+        onChange={(i, key, val) => setAddons((a) => a.map((r, idx) => (idx === i ? { ...r, [key]: val } : r)))}
+        onRemove={(i) => setAddons((a) => a.filter((_, idx) => idx !== i))}
+      />
+
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onCancel}>Cancel</Button>
         <Button onClick={submit} loading={saving}>Save item</Button>
       </div>
+    </div>
+  );
+}
+
+function RowEditor({
+  label,
+  rows,
+  cols,
+  onAdd,
+  onChange,
+  onRemove,
+}: {
+  label: string;
+  rows: Record<string, string>[];
+  cols: { key: string; placeholder: string; type?: string; flex?: boolean }[];
+  onAdd: () => void;
+  onChange: (index: number, key: string, value: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium text-muted">{label}</label>
+        <button type="button" onClick={onAdd} className="text-xs text-brand hover:underline">+ Add</button>
+      </div>
+      {rows.map((row, i) => (
+        <div key={i} className="flex items-center gap-2">
+          {cols.map((c) => (
+            <input
+              key={c.key}
+              type={c.type ?? "text"}
+              value={row[c.key]}
+              placeholder={c.placeholder}
+              onChange={(e) => onChange(i, c.key, e.target.value)}
+              className={`h-9 rounded-lg border border-line bg-bg px-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/60 ${c.flex ? "flex-1" : "w-28"}`}
+            />
+          ))}
+          <button type="button" onClick={() => onRemove(i)} className="text-muted hover:text-danger" aria-label="Remove">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

@@ -21,6 +21,11 @@ class OrderResource extends JsonResource
                 'name' => $this->vendor->name,
                 'logo' => $this->vendor->logo,
             ]),
+            'customer' => $this->whenLoaded('user', fn () => [
+                'id' => $this->user->id,
+                'name' => $this->user->name,
+                'username' => $this->user->username,
+            ]),
             'subtotal' => (float) $this->subtotal,
             'discount' => (float) $this->discount,
             'delivery_charge' => (float) $this->delivery_charge,

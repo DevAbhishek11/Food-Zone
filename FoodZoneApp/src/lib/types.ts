@@ -199,7 +199,16 @@ export interface Order {
   payment_status: string;
   items?: OrderItem[];
   rating?: { rating: number; review: string | null } | null;
+  status_history?: { status: string; note: string | null; at: string }[];
   created_at: string;
+}
+
+export interface OperatingHour {
+  id?: number;
+  day_of_week: number;
+  is_closed: boolean;
+  open_time: string | null;
+  close_time: string | null;
 }
 
 export interface Review {

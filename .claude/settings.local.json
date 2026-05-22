@@ -14,7 +14,8 @@
       "Bash(npm run *)",
       "Bash(node -e \"const r=require\\('expo-router'\\); console.log\\(Object.keys\\(r\\).sort\\(\\).join\\(', '\\)\\)\")",
       "Bash(npx tsc *)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(node *)"
     ]
   }
 }

@@ -25,8 +25,11 @@ The full product spec lives in `FoodZone_PROJECT.md`. The API contract is in `Fo
 | 9 | [Search & discovery](WORKPHASE-9.md) | Backend + Web + Mobile | ✅ Done |
 | 10 | [Favorites & reorder](WORKPHASE-10.md) | Backend + Web + Mobile | ✅ Done |
 | 11 | [Address book & checkout](WORKPHASE-11.md) | Backend + Web + Mobile | ✅ Done |
+| 12 | [Admin dashboard (enterprise)](WORKPHASE-12.md) | Backend + Web | ✅ Done |
+| 13 | [Vendor dashboard (business-ready)](WORKPHASE-13.md) | Backend + Web + Mobile | ✅ Done |
 
 > 📋 Live completed/pending work tracker: **[PROGRESS.md](PROGRESS.md)**.
+> 🗺️ Production-grade roadmap (P12→P24): **[ROADMAP.md](ROADMAP.md)**.
 
 ## Build sequencing
 
@@ -57,6 +60,6 @@ Seeded logins (password `password`): `admin@foodzone.app`, `alice@example.com`.
 
 | Tier | Command | Result |
 |---|---|---|
-| Backend | `php artisan test` | **76 passing** |
+| Backend | `php artisan test` | **85 passing** |
 | Web | `npm run build` + `npm run lint` | clean |
-| Mobile | `npx tsc --noEmit` + `npx expo lint` + `npx expo export` | clean (21 routes) |
+| Mobile | `npx tsc --noEmit` + `npx expo lint` + `npx expo export` | clean (22 routes) |

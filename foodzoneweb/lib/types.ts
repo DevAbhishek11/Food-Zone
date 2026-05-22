@@ -185,6 +185,7 @@ export interface Order {
   user_id: number;
   vendor_id: number;
   vendor?: { id: number; name: string; logo: string | null };
+  customer?: { id: number; name: string; username: string };
   subtotal: number;
   discount: number;
   delivery_charge: number;
@@ -196,6 +197,7 @@ export interface Order {
   notes: string | null;
   items?: OrderItem[];
   rating?: { rating: number; review: string | null } | null;
+  status_history?: { status: string; note: string | null; at: string }[];
   created_at: string;
 }
 

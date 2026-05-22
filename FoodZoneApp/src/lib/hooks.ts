@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from './api';
-import type { Address, ApiEnvelope, AppNotification, Order, Post, Review, User, Vendor, VendorMenu } from './types';
+import type { Address, ApiEnvelope, AppNotification, OperatingHour, Order, Post, Review, User, Vendor, VendorMenu } from './types';
 
 export interface AddressInput {
   label?: string;
@@ -293,6 +293,27 @@ export function useReplyReview() {
     mutationFn: ({ ratingId, reply }: { ratingId: number; reply: string }) =>
       api.post(`/vendor/reviews/${ratingId}/reply`, { reply }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vendor-reviews-admin'] }),
+  });
+}
+
+export function useVendorHours() {
+  return useQuery({ queryKey: ['vendor-hours'], queryFn: () => api.get<OperatingHour[]>('/vendor/hours'), select: (e) => e.data });
+}
+
+export function useUpdateHours() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (hours: OperatingHour[]) => api.put('/vendor/hours', { hours }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vendor-hours'] }),
+  });
+}
+
+export function useOrderDetail(orderId: number | null) {
+  return useQuery({
+    queryKey: ['order-detail', orderId],
+    enabled: orderId != null,
+    queryFn: () => api.get<Order>(`/orders/${orderId}`),
+    select: (e) => e.data,
   });
 }
 

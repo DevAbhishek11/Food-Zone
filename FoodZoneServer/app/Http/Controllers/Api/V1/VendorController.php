@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\OrderStatus;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Http\Controllers\Controller;
@@ -12,6 +13,7 @@ use App\Models\Vendor;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -192,6 +194,91 @@ class VendorController extends Controller
             'rating_count' => (int) $vendor->rating_count,
             'menu_items' => $vendor->items()->count(),
         ], 'Vendor stats.');
+    }
+
+    /** Sales analytics for the vendor dashboard charts. */
+    public function analytics(Request $request): JsonResponse
+    {
+        $vendor = $this->ownedVendor($request);
+        $days = min(max((int) $request->query('days', 14), 1), 90);
+        $from = now()->subDays($days - 1)->startOfDay();
+        $delivered = OrderStatus::Delivered->value;
+
+        $ordersByDay = $vendor->orders()->where('created_at', '>=', $from)
+            ->selectRaw('DATE(created_at) as d, COUNT(*) as c')->groupBy('d')->pluck('c', 'd');
+        $revenueByDay = $vendor->orders()->where('created_at', '>=', $from)
+            ->selectRaw('DATE(created_at) as d')
+            ->selectRaw("SUM(CASE WHEN status = '{$delivered}' THEN total ELSE 0 END) as r")
+            ->groupBy('d')->pluck('r', 'd');
+
+        $series = [];
+        for ($i = 0; $i < $days; $i++) {
+            $date = Carbon::parse($from)->addDays($i)->toDateString();
+            $series[] = [
+                'date' => $date,
+                'orders' => (int) ($ordersByDay[$date] ?? 0),
+                'revenue' => round((float) ($revenueByDay[$date] ?? 0), 2),
+            ];
+        }
+
+        $statusDistribution = $vendor->orders()->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')->get()
+            ->map(fn ($r) => ['status' => $r->status, 'count' => (int) $r->count]);
+
+        $topItems = $vendor->items()->orderByDesc('orders_count')->limit(5)->get()
+            ->map(fn ($it) => [
+                'id' => $it->id, 'name' => $it->name,
+                'orders_count' => (int) $it->orders_count, 'rating_avg' => (float) $it->rating_avg,
+            ]);
+
+        return ApiResponse::success([
+            'range_days' => $days,
+            'revenue_series' => $series,
+            'status_distribution' => $statusDistribution,
+            'top_items' => $topItems,
+            'lifetime_revenue' => round((float) $vendor->orders()->where('status', $delivered)->sum('total'), 2),
+        ], 'Vendor analytics.');
+    }
+
+    /** Operating hours for the 7 days of the week. */
+    public function hours(Request $request): JsonResponse
+    {
+        $vendor = $this->ownedVendor($request);
+
+        return ApiResponse::success(
+            $vendor->operatingHours()->orderBy('day_of_week')->get(),
+            'Operating hours.'
+        );
+    }
+
+    /** Upsert operating hours (full week or a subset of days). */
+    public function updateHours(Request $request): JsonResponse
+    {
+        $vendor = $this->ownedVendor($request);
+
+        $data = $request->validate([
+            'hours' => ['required', 'array', 'min:1', 'max:7'],
+            'hours.*.day_of_week' => ['required', 'integer', 'between:0,6'],
+            'hours.*.is_closed' => ['boolean'],
+            'hours.*.open_time' => ['nullable', 'date_format:H:i'],
+            'hours.*.close_time' => ['nullable', 'date_format:H:i'],
+        ]);
+
+        foreach ($data['hours'] as $row) {
+            $vendor->operatingHours()->updateOrCreate(
+                ['day_of_week' => $row['day_of_week']],
+                [
+                    'is_closed' => $row['is_closed'] ?? false,
+                    'open_time' => $row['is_closed'] ?? false ? null : ($row['open_time'] ?? null),
+                    'close_time' => $row['is_closed'] ?? false ? null : ($row['close_time'] ?? null),
+                ],
+            );
+        }
+
+        return ApiResponse::success(
+            $vendor->operatingHours()->orderBy('day_of_week')->get(),
+            'Operating hours updated.'
+        );
     }
 
     /** Add/remove a vendor from the current user's favorites. */

@@ -113,6 +113,9 @@ Route::prefix('v1')->group(function () {
         Route::prefix('vendor')->group(function () {
             Route::get('me', [VendorController::class, 'mine']);
             Route::get('stats', [VendorController::class, 'stats']);
+            Route::get('analytics', [VendorController::class, 'analytics']);
+            Route::get('hours', [VendorController::class, 'hours']);
+            Route::put('hours', [VendorController::class, 'updateHours']);
             Route::put('store', [VendorController::class, 'update']);
             Route::post('store/toggle-open', [VendorController::class, 'toggleOpen']);
             Route::apiResource('categories', MenuCategoryController::class)->only(['index', 'store', 'update', 'destroy']);
@@ -127,6 +130,9 @@ Route::prefix('v1')->group(function () {
         // Admin
         Route::prefix('admin')->middleware('role:admin')->group(function () {
             Route::get('dashboard', [AdminController::class, 'dashboard']);
+            Route::get('analytics', [AdminController::class, 'analytics']);
+            Route::get('orders', [AdminController::class, 'orders']);
+            Route::post('users/bulk', [AdminController::class, 'bulkUsers']);
             Route::get('users', [AdminController::class, 'users']);
             Route::put('users/{user}/ban', [AdminController::class, 'banUser']);
             Route::put('users/{user}/suspend', [AdminController::class, 'suspendUser']);

@@ -25,10 +25,51 @@ function infinite<T>(key: unknown[], path: string, query: Record<string, unknown
   };
 }
 
+export interface VendorAnalytics {
+  range_days: number;
+  revenue_series: { date: string; orders: number; revenue: number }[];
+  status_distribution: { status: string; count: number }[];
+  top_items: { id: number; name: string; orders_count: number; rating_avg: number }[];
+  lifetime_revenue: number;
+}
+
+export interface OperatingHour {
+  id?: number;
+  day_of_week: number;
+  is_closed: boolean;
+  open_time: string | null;
+  close_time: string | null;
+}
+
 // ---- Store / stats ---------------------------------------------------------
 
 export function useVendorStats() {
   return useQuery({ queryKey: ["vendor-stats"], queryFn: () => api.get<VendorStats>("/vendor/stats"), select: (e) => e.data });
+}
+
+export function useVendorAnalytics(days = 14) {
+  return useQuery({ queryKey: ["vendor-analytics", days], queryFn: () => api.get<VendorAnalytics>("/vendor/analytics", { query: { days } }), select: (e) => e.data });
+}
+
+export function useVendorHours() {
+  return useQuery({ queryKey: ["vendor-hours"], queryFn: () => api.get<OperatingHour[]>("/vendor/hours"), select: (e) => e.data });
+}
+
+export function useUpdateHours() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (hours: OperatingHour[]) => api.put("/vendor/hours", { hours }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["vendor-hours"] }),
+  });
+}
+
+export function useVendorOrderDetail(orderId: number | null) {
+  return useQuery({
+    queryKey: ["vendor-order", orderId],
+    enabled: orderId != null,
+    queryFn: () => api.get<Order>(`/orders/${orderId}`),
+    select: (e) => e.data,
+  });
 }
 
 export function useMyVendor() {
@@ -96,6 +137,8 @@ export interface ItemInput {
   description?: string;
   category_id?: number | null;
   is_available?: boolean;
+  variants?: { name: string; price_modifier: number }[];
+  addons?: { name: string; price: number }[];
 }
 
 export function useSaveItem() {

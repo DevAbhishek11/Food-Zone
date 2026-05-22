@@ -1,8 +1,24 @@
 "use client";
 
 import { api } from "@/lib/api";
-import type { ApiEnvelope, User, Vendor } from "@/lib/types";
+import type { ApiEnvelope, Order, User, Vendor } from "@/lib/types";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+export interface AdminAnalytics {
+  range_days: number;
+  revenue_series: { date: string; orders: number; revenue: number }[];
+  users_series: { date: string; count: number }[];
+  status_distribution: { status: string; count: number }[];
+  top_vendors: { id: number; name: string; orders_count: number; rating_avg: number }[];
+}
+
+export function useAdminAnalytics(days = 14) {
+  return useQuery({
+    queryKey: ["admin-analytics", days],
+    queryFn: () => api.get<AdminAnalytics>("/admin/analytics", { query: { days } }),
+    select: (e) => e.data,
+  });
+}
 
 export interface AdminStats {
   users_total: number;
@@ -45,7 +61,21 @@ export function useUserModeration() {
   const ban = useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => api.put(`/admin/users/${id}/ban`, { reason }), onSuccess: invalidate });
   const suspend = useMutation({ mutationFn: ({ id, days }: { id: number; days: number }) => api.put(`/admin/users/${id}/suspend`, { days }), onSuccess: invalidate });
   const unban = useMutation({ mutationFn: (id: number) => api.put(`/admin/users/${id}/unban`), onSuccess: invalidate });
-  return { ban, suspend, unban };
+  const bulk = useMutation({
+    mutationFn: (body: { action: "ban" | "suspend" | "unban"; user_ids: number[]; days?: number }) =>
+      api.post<{ affected: number }>("/admin/users/bulk", body),
+    onSuccess: invalidate,
+  });
+  return { ban, suspend, unban, bulk };
+}
+
+export function useAdminOrders(filters: { status?: string; q?: string; payment_status?: string }) {
+  return useInfiniteQuery({
+    queryKey: ["admin-orders", filters],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<Order[]>("/admin/orders", { query: { ...filters, page: pageParam } }),
+    getNextPageParam: (last: ApiEnvelope<Order[]>) => (last.meta?.has_more ? last.meta.current_page + 1 : undefined),
+  });
 }
 
 export function useAdminVendors(status?: string) {
