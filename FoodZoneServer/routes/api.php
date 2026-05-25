@@ -64,6 +64,9 @@ Route::prefix('v1')->group(function () {
     /* ----------------------------------------------------- Authenticated API */
     Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
+        // Media uploads
+        Route::post('media', [\App\Http\Controllers\Api\V1\MediaController::class, 'store']);
+
         // Account & profile
         Route::put('profile', [ProfileController::class, 'update']);
         Route::post('profile/deactivate', [ProfileController::class, 'deactivate']);
@@ -84,6 +87,14 @@ Route::prefix('v1')->group(function () {
         Route::delete('users/{user}/follow', [UserController::class, 'unfollow']);
         Route::post('users/{user}/block', [UserController::class, 'block']);
         Route::delete('users/{user}/block', [UserController::class, 'unblock']);
+
+        // Chat / DMs
+        Route::get('conversations', [\App\Http\Controllers\Api\V1\ChatController::class, 'index']);
+        Route::post('conversations', [\App\Http\Controllers\Api\V1\ChatController::class, 'store']);
+        Route::get('conversations/unread-count', [\App\Http\Controllers\Api\V1\ChatController::class, 'unreadCount']);
+        Route::get('conversations/{conversation}/messages', [\App\Http\Controllers\Api\V1\ChatController::class, 'messages']);
+        Route::post('conversations/{conversation}/messages', [\App\Http\Controllers\Api\V1\ChatController::class, 'send']);
+        Route::post('conversations/{conversation}/read', [\App\Http\Controllers\Api\V1\ChatController::class, 'markRead']);
 
         // Notifications
         Route::get('notifications', [NotificationController::class, 'index']);

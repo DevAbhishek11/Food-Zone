@@ -1,7 +1,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from './api';
-import type { Address, ApiEnvelope, AppNotification, OperatingHour, Order, Post, Review, User, Vendor, VendorMenu } from './types';
+import { useAuthStore } from './auth-store';
+import type { Address, ApiEnvelope, AppNotification, Conversation, Message, OperatingHour, Order, Post, Review, User, Vendor, VendorMenu } from './types';
 
 export interface AddressInput {
   label?: string;
@@ -54,8 +55,15 @@ export function useFeed() {
 export function useCreatePost() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: string) => api.post<Post>('/posts', { body }),
+    mutationFn: (input: { body: string; media?: { url: string; type: 'image' }[] }) => api.post<Post>('/posts', input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['feed'] }),
+  });
+}
+
+export function useUpdateProfile() {
+  return useMutation({
+    mutationFn: (body: { avatar?: string | null; name?: string; bio?: string }) => api.put<User>('/profile', body),
+    onSuccess: (res) => useAuthStore.getState().setUser(res.data),
   });
 }
 
@@ -361,4 +369,60 @@ export function useVendorModeration() {
     onSuccess: invalidate,
   });
   return { approve, reject };
+}
+
+// ---- Chat / DMs ------------------------------------------------------------
+
+export function useConversations() {
+  return useInfiniteQuery({
+    queryKey: ['conversations'],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<Conversation[]>('/conversations', { query: { page: pageParam } }),
+    getNextPageParam: nextPage,
+  });
+}
+
+export function useChatUnread() {
+  return useQuery({
+    queryKey: ['conversations', 'unread'],
+    queryFn: () => api.get<{ unread: number }>('/conversations/unread-count'),
+    refetchInterval: 30_000,
+    select: (e) => e.data.unread,
+  });
+}
+
+export function useStartConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: number) => api.post<Conversation>('/conversations', { user_id: userId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['conversations'] }),
+  });
+}
+
+export function useMessages(conversationId: number) {
+  return useInfiniteQuery({
+    queryKey: ['messages', conversationId],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<Message[]>(`/conversations/${conversationId}/messages`, { query: { page: pageParam } }),
+    getNextPageParam: nextPage,
+  });
+}
+
+export function useSendMessage(conversationId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: string) => api.post<Message>(`/conversations/${conversationId}/messages`, { body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['messages', conversationId] });
+      qc.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
+export function useMarkConversationRead(conversationId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post(`/conversations/${conversationId}/read`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['conversations'] }),
+  });
 }

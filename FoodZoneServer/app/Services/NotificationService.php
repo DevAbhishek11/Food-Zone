@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
+use App\Events\NotificationCreated;
 use App\Models\Notification;
 use App\Models\User;
 
 /**
- * Centralised creation of in-app notifications. (Push/email channels can be
- * layered on later by dispatching jobs from here.)
+ * Centralised creation of in-app notifications. Broadcasts each new notification
+ * on the recipient's private channel (real-time) when broadcasting is configured.
  */
 class NotificationService
 {
@@ -30,12 +31,17 @@ class NotificationService
             ];
         }
 
-        return Notification::create([
+        $notification = Notification::create([
             'user_id' => $user instanceof User ? $user->id : $user,
             'type' => $type,
             'title' => $title,
             'message' => $message,
             'data' => $data,
         ]);
+
+        event(new NotificationCreated($notification));
+
+        return $notification;
     }
 }
+

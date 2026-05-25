@@ -8,12 +8,12 @@ tiers with tests + a `WORKPHASE-N.md`, and updates `PROGRESS.md`.
 |---|---|---|---|
 | 12 | **Admin Dashboard** | Analytics, charts, order monitoring, bulk user actions, CSV | ✅ Done |
 | 13 | **Vendor Dashboard** | Sales analytics, full menu (variants/add-ons), hours editor, timeline | ✅ Done |
-| 14 | **Media uploads** | `POST /media`, Laravel Filesystem (local→S3/Cloudinary), image optimize; wire avatars/posts/vendor/menu | ⏳ Next |
-| 15 | **Infra: Redis + Queues** | predis driver, queued jobs (notifications/email/media), cache strategy | ⏳ |
-| 16 | **Meilisearch (Scout)** | Fast relevant search with graceful DB fallback | ⏳ |
-| 17 | **Real-time (Reverb)** | Live notifications + order status; replace 30s polling | ⏳ |
-| 18 | **Chat / DMs** | User↔vendor messaging (real-time) | ⏳ |
-| 19 | **Payments** | Razorpay/Stripe: intent, webhook, refund | ⏳ |
+| 14 | **Media uploads** | `POST /media`, Laravel Filesystem (local→S3/Cloudinary), image optimize; wire avatars/posts/vendor/menu | ✅ Done |
+| 15 | **Infra: Redis + Queues** | predis driver, queued jobs (notifications/email/media), cache strategy | ✅ Done |
+| 16 | **Meilisearch (Scout)** | Fast relevant search with graceful DB fallback | ✅ Done |
+| 17 | **Real-time (Reverb)** | Live notifications + order status; replace 30s polling | ✅ Done |
+| 18 | **Chat / DMs** | User↔vendor messaging (real-time) | ✅ Done |
+| 19 | **Payments** | Razorpay/Stripe: intent, webhook, refund | ⏳ Next |
 | 20 | **Checkout depth** | Variants/add-ons + voucher/promo UX at checkout | ⏳ |
 | 21 | **Delivery partner** | `delivery` role: assignment, accept, live status | ⏳ |
 | 22 | **Order timeline + post detail** | Status history UI, threaded comments, mobile menu mgmt | ⏳ |

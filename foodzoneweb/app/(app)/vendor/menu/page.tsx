@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -168,6 +169,7 @@ function ItemForm({
   const [addons, setAddons] = useState<{ name: string; price: string }[]>(
     item?.addons?.map((a) => ({ name: a.name, price: String(a.price) })) ?? [],
   );
+  const [image, setImage] = useState<string | null>(item?.images?.[0] ?? null);
 
   const submit = () => {
     const p = parseFloat(price);
@@ -182,6 +184,7 @@ function ItemForm({
       category_id: categoryId ? Number(categoryId) : null,
       variants: variants.filter((v) => v.name.trim()).map((v) => ({ name: v.name.trim(), price_modifier: parseFloat(v.price_modifier) || 0 })),
       addons: addons.filter((a) => a.name.trim()).map((a) => ({ name: a.name.trim(), price: parseFloat(a.price) || 0 })),
+      images: image ? [image] : [],
     });
   };
 
@@ -192,6 +195,10 @@ function ItemForm({
         <Input label="Price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="299" />
       </div>
       <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-muted">Photo</label>
+        <ImageUpload value={image} onChange={setImage} category="menu" label="Upload photo" />
+      </div>
       <div className="flex flex-col gap-1.5">
         <label className="text-sm font-medium text-muted">Category</label>
         <select

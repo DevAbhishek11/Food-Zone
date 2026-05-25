@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Scout\Searchable;
 
 class Post extends Model
 {
     /** @use HasFactory<\Database\Factories\PostFactory> */
-    use HasFactory;
+    use HasFactory, Searchable;
 
     protected $fillable = [
         'user_id', 'body', 'privacy', 'type',
@@ -65,5 +66,24 @@ class Post extends Model
     public function isLikedBy(int $userId): bool
     {
         return $this->likes()->where('user_id', $userId)->exists();
+    }
+
+    // ---- Scout (search) -------------------------------------------------
+
+    /** Only public posts are indexed for search. */
+    public function shouldBeSearchable(): bool
+    {
+        return $this->privacy === PostPrivacy::Public;
+    }
+
+    /** @return array<string, mixed> */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'body' => $this->body,
+            'privacy' => $this->privacy?->value,
+            'user_id' => $this->user_id,
+        ];
     }
 }

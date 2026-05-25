@@ -2,24 +2,36 @@
 
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuth } from "@/lib/auth-context";
+import { useUpdateProfile } from "@/lib/hooks/use-profile";
+import { toast } from "@/lib/toast-store";
 import { BadgeCheck, ChevronRight, LogOut, Mail, MapPin } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
-
-  if (!user) return null;
+  const { user, logout } = useAuth(); // guaranteed non-null
+  const updateProfile = useUpdateProfile();
+  const [editingAvatar, setEditingAvatar] = useState(false);
 
   const stats = [
     { label: "Posts", value: user.profile?.posts_count ?? 0 },
     { label: "Followers", value: user.profile?.followers_count ?? 0 },
     { label: "Following", value: user.profile?.following_count ?? 0 },
   ];
+
+  const saveAvatar = async (url: string | null) => {
+    try {
+      await updateProfile.mutateAsync({ avatar: url });
+      toast.success(url ? "Avatar updated" : "Avatar removed");
+    } catch {
+      toast.error("Could not update avatar.");
+    }
+  };
 
   return (
     <>
@@ -29,7 +41,7 @@ export default function ProfilePage() {
         <div className="rounded-card border border-line bg-bg-soft p-6">
           <div className="flex items-center gap-4">
             <Avatar src={user.profile?.avatar} name={user.name} size={72} />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h2 className="flex items-center gap-1.5 text-xl font-semibold">
                 {user.name}
                 {user.email_verified && <BadgeCheck className="h-5 w-5 text-info" />}
@@ -39,7 +51,16 @@ export default function ProfilePage() {
                 {user.role}
               </span>
             </div>
+            <button onClick={() => setEditingAvatar((v) => !v)} className="text-sm text-brand hover:underline">
+              {editingAvatar ? "Done" : "Edit photo"}
+            </button>
           </div>
+
+          {editingAvatar && (
+            <div className="mt-4 border-t border-line pt-4">
+              <ImageUpload value={user.profile?.avatar ?? null} onChange={saveAvatar} category="avatar" rounded label="Upload avatar" />
+            </div>
+          )}
 
           {user.profile?.bio && <p className="mt-4 text-sm text-content">{user.profile.bio}</p>}
 

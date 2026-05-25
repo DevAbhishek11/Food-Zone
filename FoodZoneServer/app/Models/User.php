@@ -5,16 +5,18 @@ namespace App\Models;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Scout\Searchable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, Searchable;
 
     protected $fillable = [
         'name',
@@ -111,6 +113,13 @@ class User extends Authenticatable
         return $this->hasMany(Favorite::class);
     }
 
+    public function conversations(): BelongsToMany
+    {
+        return $this->belongsToMany(Conversation::class, 'conversation_user')
+            ->withPivot('last_read_at')
+            ->withTimestamps();
+    }
+
     // ----------------------------------------------------------------
     // Helpers
     // ----------------------------------------------------------------
@@ -159,5 +168,24 @@ class User extends Authenticatable
             ->unique()
             ->values()
             ->all();
+    }
+
+    // ---- Scout (search) -------------------------------------------------
+
+    /** Banned/deactivated accounts are excluded from the search index. */
+    public function shouldBeSearchable(): bool
+    {
+        return ! in_array($this->status, [UserStatus::Banned, UserStatus::Deactivated], true);
+    }
+
+    /** @return array<string, mixed> */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'username' => $this->username,
+            'status' => $this->status?->value,
+        ];
     }
 }

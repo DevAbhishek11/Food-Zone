@@ -7,17 +7,25 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/ui/States";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuthStore } from "@/lib/auth-store";
+import { useStartConversation } from "@/lib/hooks/use-chat";
 import { useToggleFollow, useUserPosts, useUserProfile } from "@/lib/hooks/use-users";
-import { ArrowLeft, BadgeCheck } from "lucide-react";
+import { ArrowLeft, BadgeCheck, MessageCircle } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 export default function UserProfilePage() {
   const { username } = useParams<{ username: string }>();
+  const router = useRouter();
   const me = useAuthStore((s) => s.user);
   const { data: user, isLoading, isError, refetch } = useUserProfile(username);
   const posts = useUserPosts(username);
   const { follow, unfollow } = useToggleFollow(username);
+  const startConversation = useStartConversation();
+
+  const messageUser = async (userId: number) => {
+    const res = await startConversation.mutateAsync(userId);
+    router.push(`/messages/${res.data.id}`);
+  };
 
   if (isLoading) {
     return (
@@ -69,15 +77,20 @@ export default function UserProfilePage() {
               <p className="text-sm text-muted">@{user.username}</p>
             </div>
             {!isSelf && (
-              following ? (
-                <Button variant="secondary" size="sm" loading={unfollow.isPending} onClick={() => unfollow.mutate(user.id)}>
-                  Following
+              <div className="flex items-center gap-2">
+                <Button variant="secondary" size="sm" loading={startConversation.isPending} onClick={() => messageUser(user.id)} aria-label="Message">
+                  <MessageCircle className="h-4 w-4" />
                 </Button>
-              ) : (
-                <Button size="sm" loading={follow.isPending} onClick={() => follow.mutate(user.id)}>
-                  {user.profile?.is_private ? "Request" : "Follow"}
-                </Button>
-              )
+                {following ? (
+                  <Button variant="secondary" size="sm" loading={unfollow.isPending} onClick={() => unfollow.mutate(user.id)}>
+                    Following
+                  </Button>
+                ) : (
+                  <Button size="sm" loading={follow.isPending} onClick={() => follow.mutate(user.id)}>
+                    {user.profile?.is_private ? "Request" : "Follow"}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 

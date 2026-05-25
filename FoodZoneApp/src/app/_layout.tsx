@@ -56,6 +56,8 @@ function RootNavigator() {
       <Stack.Screen name="admin/index" options={{ presentation: 'card' }} />
       <Stack.Screen name="search" options={{ presentation: 'card' }} />
       <Stack.Screen name="addresses" options={{ presentation: 'card' }} />
+      <Stack.Screen name="messages/index" options={{ presentation: 'card' }} />
+      <Stack.Screen name="messages/[id]" options={{ presentation: 'card' }} />
     </Stack>
   );
 }

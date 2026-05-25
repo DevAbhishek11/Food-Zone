@@ -19,6 +19,7 @@ use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
@@ -45,10 +46,19 @@ class AdminController extends Controller
         ], 'Dashboard metrics.');
     }
 
-    /** Time-series + distributions for the dashboard charts. */
+    /** Time-series + distributions for the dashboard charts (cached 5 min). */
     public function analytics(Request $request): JsonResponse
     {
         $days = min(max((int) $request->query('days', 14), 1), 90);
+
+        $data = Cache::remember("admin:analytics:{$days}", now()->addMinutes(5), fn () => $this->computeAnalytics($days));
+
+        return ApiResponse::success($data, 'Analytics.');
+    }
+
+    /** @return array<string, mixed> */
+    private function computeAnalytics(int $days): array
+    {
         $from = now()->subDays($days - 1)->startOfDay();
         $delivered = OrderStatus::Delivered->value;
 
@@ -88,13 +98,13 @@ class AdminController extends Controller
                 'orders_count' => (int) $v->orders_count, 'rating_avg' => (float) $v->rating_avg,
             ]);
 
-        return ApiResponse::success([
+        return [
             'range_days' => $days,
             'revenue_series' => $revenueSeries,
             'users_series' => $usersSeries,
             'status_distribution' => $statusDistribution,
             'top_vendors' => $topVendors,
-        ], 'Analytics.');
+        ];
     }
 
     /** Platform-wide order monitoring (filterable). */

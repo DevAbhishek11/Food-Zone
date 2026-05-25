@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\OrderStatus;
+use App\Events\OrderStatusUpdated;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
+use App\Jobs\RecalculateVendorRating;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\MenuItem;
@@ -138,6 +140,8 @@ class OrderController extends Controller
         $this->notifications->notify($order->vendor->user_id, 'order_status', 'Order cancelled',
             "Order {$order->order_number} was cancelled by the customer.", ['order_id' => $order->id]);
 
+        event(new OrderStatusUpdated($order->id, $order->user_id, OrderStatus::Cancelled->value, $order->order_number));
+
         return ApiResponse::success(new OrderResource($order->fresh()), 'Order cancelled.');
     }
 
@@ -215,15 +219,11 @@ class OrderController extends Controller
                 'review' => $data['review'] ?? null,
                 'images' => $data['images'] ?? null,
             ]);
-
-            // Recompute vendor aggregate rating.
-            $vendor = $order->vendor;
-            $agg = $vendor->ratings()->selectRaw('AVG(rating) avg, COUNT(*) cnt')->first();
-            $vendor->update([
-                'rating_avg' => round((float) $agg->avg, 2),
-                'rating_count' => (int) $agg->cnt,
-            ]);
         });
+
+        // Recompute the vendor's aggregate rating off the request path
+        // (runs inline with the sync driver; async on Redis in production).
+        RecalculateVendorRating::dispatch($order->vendor_id);
 
         return ApiResponse::success(null, 'Thanks for rating your order.', 201);
     }
@@ -252,6 +252,8 @@ class OrderController extends Controller
             'changed_by' => $userId,
             'note' => $note,
         ]);
+
+        event(new OrderStatusUpdated($order->id, $order->user_id, $next->value, $order->order_number));
     }
 
     private function assertCanView(Request $request, Order $order): void

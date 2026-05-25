@@ -8,7 +8,7 @@ import { Avatar, Button, EmptyView, ErrorView, Loading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/lib/auth-store';
-import { useToggleFollow, useUserPosts, useUserProfile } from '@/lib/hooks';
+import { useStartConversation, useToggleFollow, useUserPosts, useUserProfile } from '@/lib/hooks';
 
 export default function UserProfileScreen() {
   const c = useTheme();
@@ -18,6 +18,10 @@ export default function UserProfileScreen() {
   const { data: user, isLoading, isError, refetch } = useUserProfile(username);
   const posts = useUserPosts(username);
   const { follow, unfollow } = useToggleFollow(username);
+  const startConversation = useStartConversation();
+
+  const messageUser = (userId: number) =>
+    startConversation.mutate(userId, { onSuccess: (res) => router.push(`/messages/${res.data.id}`) });
 
   if (isLoading) {
     return (
@@ -48,12 +52,20 @@ export default function UserProfileScreen() {
             <Text style={{ color: c.textSecondary }}>@{user.username}</Text>
           </View>
           {!isSelf && (
-            <Button
-              title={following ? 'Following' : user.profile?.is_private ? 'Request' : 'Follow'}
-              variant={following ? 'secondary' : 'primary'}
-              loading={follow.isPending || unfollow.isPending}
-              onPress={() => (following ? unfollow.mutate(user.id) : follow.mutate(user.id))}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
+              <Pressable
+                onPress={() => messageUser(user.id)}
+                style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: c.backgroundElement, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name="chatbubble-outline" size={18} color={c.text} />
+              </Pressable>
+              <Button
+                title={following ? 'Following' : user.profile?.is_private ? 'Request' : 'Follow'}
+                variant={following ? 'secondary' : 'primary'}
+                loading={follow.isPending || unfollow.isPending}
+                onPress={() => (following ? unfollow.mutate(user.id) : follow.mutate(user.id))}
+              />
+            </View>
           )}
         </View>
 

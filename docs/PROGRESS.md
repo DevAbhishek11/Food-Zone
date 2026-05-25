@@ -5,7 +5,7 @@ delivered across all relevant tiers and verified (`php artisan test` / web `buil
 / mobile `tsc`+`expo lint`+`expo export`). Per-phase detail lives in `WORKPHASE-N.md`;
 the index is `WORKPHASES.md`.
 
-_Last updated: 2026-05-20 · Backend tests: **85** · Mobile routes: **22** · Production roadmap: [ROADMAP.md](ROADMAP.md)_
+_Last updated: 2026-05-20 · Backend tests: **105** · Mobile routes: **24** · Production roadmap: [ROADMAP.md](ROADMAP.md)_
 
 ---
 
@@ -38,6 +38,21 @@ _Last updated: 2026-05-20 · Backend tests: **85** · Mobile routes: **22** · P
   monitoring table, bulk user actions, CSV export. _(Backend + Web)_
 - [x] **P13 — Vendor dashboard (business-ready)**: sales analytics + charts, operating-hours
   editor, menu variants/add-ons editor, order timelines. _(Backend + Web + Mobile)_
+- [x] **P14 — Media uploads + auth hardening**: `POST /media` (env-driven disk, CDN/S3-ready),
+  web AuthContext (guaranteed non-null user), image uploads for avatars/posts/menu items
+  on web + mobile (expo-image-picker). _(Backend + Web + Mobile)_
+- [x] **P15 — Infra: Redis, queues & caching**: predis; queued jobs (`RecalculateVendorRating`,
+  queued verification email); `Cache::remember` on admin/vendor analytics; env-driven Redis
+  with DB/sync fallback. _(Backend infra; not runtime-verified in sandbox)_
+- [x] **P16 — Meilisearch via Scout**: Searchable Vendor/User/Post (index scoping via
+  `shouldBeSearchable`); `/search` routes through Scout when `SCOUT_DRIVER=meilisearch`,
+  DB-LIKE fallback otherwise. _(Backend infra; engine not runtime-verified in sandbox)_
+- [x] **P17 — Real-time via Reverb**: `NotificationCreated` + `OrderStatusUpdated` broadcast
+  events on private channels; web + mobile Echo clients (env-guarded) refresh queries live,
+  polling fallback. _(All tiers; WS server not runtime-verified in sandbox)_
+- [x] **P18 — Chat / DMs**: conversations + messages schema, participant-guarded endpoints,
+  `MessageSent` broadcast; web `/messages` + thread, mobile messages screens, "Message" on
+  profiles. _(Backend + Web + Mobile)_
 
 ---
 
@@ -46,14 +61,12 @@ _Last updated: 2026-05-20 · Backend tests: **85** · Mobile routes: **22** · P
 Ordered roughly by value. Each would follow the same convention (next phase number,
 all tiers, tests, a `WORKPHASE-N.md`).
 
-### Next up (proposed P12+)
+### Next up (per [ROADMAP.md](ROADMAP.md))
+- [ ] **P19 — Payments** — Razorpay/Stripe: order payment intent, webhook, refund.
+- [ ] **P17 — Real-time (Reverb)** — live notifications + order status; replace 30s polling.
 - [ ] **Post detail & share** — dedicated post page/screen with full comment threads,
-  reply-to-comment UI, share/repost.
-- [ ] **Image uploads** — real media for avatars, post media, vendor logo/banner, menu
-  images (currently URLs only). Needs a storage/upload endpoint (`POST /media`) + client pickers.
+  reply-to-comment UI, share/repost. _(vendor logo/banner upload UI also still pending)_
 - [ ] **Stories** — 24h ephemeral posts (`stories` + `story_views` tables, endpoints, UI rails).
-- [ ] **Real-time** — chat/DMs and live order/notification updates via Laravel Reverb
-  (WebSockets). Currently notifications poll every 30s.
 
 ### Commerce depth
 - [ ] **Payments** — real Razorpay/Stripe gateway (intent, webhook, refund); today payment

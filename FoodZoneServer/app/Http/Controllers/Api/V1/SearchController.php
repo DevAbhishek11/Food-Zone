@@ -36,6 +36,10 @@ class SearchController extends Controller
 
         $blocked = $request->user()?->blockedUserIds() ?? [];
 
+        if ($this->useScout()) {
+            return $this->scoutSearch($term, $type, $blocked);
+        }
+
         return match ($type) {
             'users' => ApiResponse::paginated($this->users($term, $blocked)->paginate(15), UserSummaryResource::class, 'People.'),
             'vendors' => ApiResponse::paginated($this->vendors($term)->paginate(15), VendorResource::class, 'Restaurants.'),
@@ -44,6 +48,35 @@ class SearchController extends Controller
                 'users' => UserSummaryResource::collection($this->users($term, $blocked)->limit(5)->get()),
                 'vendors' => VendorResource::collection($this->vendors($term)->limit(5)->get()),
                 'posts' => PostResource::collection($this->posts($term, $blocked, $request)->limit(5)->get()),
+            ], 'Search results.'),
+        };
+    }
+
+    /** Whether a real search engine (Meilisearch) is configured. */
+    private function useScout(): bool
+    {
+        return config('scout.driver') === 'meilisearch';
+    }
+
+    /**
+     * Scout/Meilisearch-powered search. Approved-vendor / public-post scoping is
+     * enforced at index time via each model's shouldBeSearchable(); blocked users
+     * are excluded when hydrating results.
+     */
+    private function scoutSearch(string $term, ?string $type, array $blocked): JsonResponse
+    {
+        $userQuery = fn () => User::search($term)->query(fn ($q) => $q->with('profile')->whereNotIn('id', $blocked));
+        $vendorQuery = fn () => Vendor::search($term);
+        $postQuery = fn () => Post::search($term)->query(fn ($q) => $q->with(['user.profile', 'media'])->whereNotIn('user_id', $blocked));
+
+        return match ($type) {
+            'users' => ApiResponse::paginated($userQuery()->paginate(15), UserSummaryResource::class, 'People.'),
+            'vendors' => ApiResponse::paginated($vendorQuery()->paginate(15), VendorResource::class, 'Restaurants.'),
+            'posts' => ApiResponse::paginated($postQuery()->paginate(15), PostResource::class, 'Posts.'),
+            default => ApiResponse::success([
+                'users' => UserSummaryResource::collection($userQuery()->take(5)->get()),
+                'vendors' => VendorResource::collection($vendorQuery()->take(5)->get()),
+                'posts' => PostResource::collection($postQuery()->take(5)->get()),
             ], 'Search results.'),
         };
     }

@@ -17,6 +17,7 @@ export function useFeed() {
 interface CreatePostInput {
   body: string;
   privacy?: "public" | "followers" | "private";
+  media?: { url: string; type: "image" }[];
 }
 
 export function useCreatePost() {

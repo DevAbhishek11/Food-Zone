@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Scout\Searchable;
 
 class Vendor extends Model
 {
     /** @use HasFactory<\Database\Factories\VendorFactory> */
-    use HasFactory;
+    use HasFactory, Searchable;
 
     protected $fillable = [
         'user_id', 'name', 'slug', 'description', 'logo', 'banner',
@@ -89,5 +90,27 @@ class Vendor extends Model
     public function isAcceptingOrders(): bool
     {
         return $this->isApproved() && $this->is_open;
+    }
+
+    // ---- Scout (search) -------------------------------------------------
+
+    /** Only approved vendors are indexed for search. */
+    public function shouldBeSearchable(): bool
+    {
+        return $this->status === VendorStatus::Approved;
+    }
+
+    /** @return array<string, mixed> */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'description' => $this->description,
+            'city' => $this->city,
+            'slug' => $this->slug,
+            'status' => $this->status?->value,
+            'rating_avg' => (float) $this->rating_avg,
+        ];
     }
 }

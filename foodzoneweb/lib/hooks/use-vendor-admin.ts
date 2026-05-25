@@ -139,6 +139,7 @@ export interface ItemInput {
   is_available?: boolean;
   variants?: { name: string; price_modifier: number }[];
   addons?: { name: string; price: number }[];
+  images?: string[];
 }
 
 export function useSaveItem() {

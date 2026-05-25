@@ -15,7 +15,15 @@
       "Bash(node -e \"const r=require\\('expo-router'\\); console.log\\(Object.keys\\(r\\).sort\\(\\).join\\(', '\\)\\)\")",
       "Bash(npx tsc *)",
       "Bash(echo \"exit: $?\")",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(composer require *)",
+      "Bash(php -r \"echo class_exists\\('Predis\\\\\\\\\\\\\\\\Client'\\) ? 'predis OK' : 'predis MISSING';\")",
+      "Bash(CACHE_STORE=redis QUEUE_CONNECTION=redis php artisan about --only=drivers)",
+      "Bash(php -r \"require 'vendor/autoload.php'; echo class_exists\\('Predis\\\\\\\\\\\\\\\\Client'\\) ? 'predis OK' : 'MISSING';\")",
+      "Bash(php -r \"require 'vendor/autoload.php'; echo class_exists\\('Laravel\\\\\\\\\\\\\\\\Scout\\\\\\\\\\\\\\\\Searchable'\\)?'scout OK':'scout MISSING'; echo PHP_EOL; echo class_exists\\('Meilisearch\\\\\\\\\\\\\\\\Client'\\)?'meili-client OK':'meili-client MISSING';\")",
+      "Bash(SCOUT_DRIVER=meilisearch php artisan about --only=drivers)",
+      "Bash(SCOUT_DRIVER=meilisearch php artisan tinker --execute=\"echo config\\('scout.driver'\\);\")",
+      "Bash(php -r \"require 'vendor/autoload.php'; echo class_exists\\('Laravel\\\\\\\\\\\\\\\\Reverb\\\\\\\\\\\\\\\\ReverbServiceProvider'\\)?'reverb OK':'reverb MISSING';\")"
     ]
   }
 }

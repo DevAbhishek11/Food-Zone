@@ -1,6 +1,7 @@
 "use client";
 
 import { AppShell } from "@/components/AppShell";
+import { AuthProvider } from "@/lib/auth-context";
 import { useAuthStore } from "@/lib/auth-store";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -9,7 +10,9 @@ import { useEffect, type ReactNode } from "react";
 /** Guards the authenticated area: resolves the session, redirects guests. */
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { status, hydrate } = useAuthStore();
+  const status = useAuthStore((s) => s.status);
+  const user = useAuthStore((s) => s.user);
+  const hydrate = useAuthStore((s) => s.hydrate);
 
   useEffect(() => {
     if (status === "idle") void hydrate();
@@ -19,7 +22,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     if (status === "guest") router.replace("/login");
   }, [status, router]);
 
-  if (status !== "authenticated") {
+  // Render children only once we have a resolved, non-null user.
+  if (status !== "authenticated" || !user) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-bg">
         <Loader2 className="h-8 w-8 animate-spin text-brand" />
@@ -27,5 +31,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  return <AppShell>{children}</AppShell>;
+  return (
+    <AuthProvider user={user}>
+      <AppShell>{children}</AppShell>
+    </AuthProvider>
+  );
 }

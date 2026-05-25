@@ -14,6 +14,7 @@ use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -196,11 +197,24 @@ class VendorController extends Controller
         ], 'Vendor stats.');
     }
 
-    /** Sales analytics for the vendor dashboard charts. */
+    /** Sales analytics for the vendor dashboard charts (cached 5 min per vendor). */
     public function analytics(Request $request): JsonResponse
     {
         $vendor = $this->ownedVendor($request);
         $days = min(max((int) $request->query('days', 14), 1), 90);
+
+        $data = Cache::remember(
+            "vendor:{$vendor->id}:analytics:{$days}",
+            now()->addMinutes(5),
+            fn () => $this->computeVendorAnalytics($vendor, $days),
+        );
+
+        return ApiResponse::success($data, 'Vendor analytics.');
+    }
+
+    /** @return array<string, mixed> */
+    private function computeVendorAnalytics(Vendor $vendor, int $days): array
+    {
         $from = now()->subDays($days - 1)->startOfDay();
         $delivered = OrderStatus::Delivered->value;
 
@@ -231,13 +245,13 @@ class VendorController extends Controller
                 'orders_count' => (int) $it->orders_count, 'rating_avg' => (float) $it->rating_avg,
             ]);
 
-        return ApiResponse::success([
+        return [
             'range_days' => $days,
             'revenue_series' => $series,
             'status_distribution' => $statusDistribution,
             'top_items' => $topItems,
             'lifetime_revenue' => round((float) $vendor->orders()->where('status', $delivered)->sum('total'), 2),
-        ], 'Vendor analytics.');
+        ];
     }
 
     /** Operating hours for the 7 days of the week. */

@@ -44,8 +44,10 @@ async function request<T>(
   body?: unknown,
   options: RequestOptions = {},
 ): Promise<ApiEnvelope<T>> {
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  // For multipart uploads let fetch set the Content-Type + boundary.
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
 
   const token = getToken();
   if (token && options.auth !== false) headers.Authorization = `Bearer ${token}`;
@@ -55,7 +57,7 @@ async function request<T>(
     res = await fetch(buildUrl(path, options.query), {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     });
   } catch {
     throw new ApiError('Network error — check your connection and the API URL.', 0);

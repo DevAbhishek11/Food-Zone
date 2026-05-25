@@ -35,7 +35,13 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "FoodZone needs access to your photos so you can upload images to posts and your profile."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

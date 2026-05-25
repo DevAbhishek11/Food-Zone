@@ -3,8 +3,10 @@
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/cn";
 import { useAuthStore } from "@/lib/auth-store";
+import { useChatUnread } from "@/lib/hooks/use-chat";
 import { useUnreadCount } from "@/lib/hooks/use-notifications";
-import { Bell, Home, LayoutDashboard, LogOut, Receipt, Shield, Store, UserRound, UtensilsCrossed } from "lucide-react";
+import { useRealtime } from "@/lib/hooks/use-realtime";
+import { Bell, Home, LayoutDashboard, LogOut, MessageCircle, Receipt, Shield, Store, UserRound, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ComponentType, ReactNode } from "react";
@@ -13,13 +15,14 @@ interface NavItem {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
-  badge?: boolean;
+  badgeKey?: "notif" | "chat";
 }
 
 const BASE_NAV: NavItem[] = [
   { href: "/", label: "Feed", icon: Home },
   { href: "/vendors", label: "Order Food", icon: Store },
-  { href: "/notifications", label: "Inbox", icon: Bell, badge: true },
+  { href: "/messages", label: "Messages", icon: MessageCircle, badgeKey: "chat" },
+  { href: "/notifications", label: "Inbox", icon: Bell, badgeKey: "notif" },
   { href: "/orders", label: "My Orders", icon: Receipt },
   { href: "/profile", label: "Profile", icon: UserRound },
 ];
@@ -47,6 +50,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { data: unread = 0 } = useUnreadCount();
+  const { data: chatUnread = 0 } = useChatUnread();
+  useRealtime(user?.id);
+
+  const countFor = (key?: "notif" | "chat") => (key === "chat" ? chatUnread : key === "notif" ? unread : 0);
 
   const role = user?.role;
   const NAV: NavItem[] = [
@@ -72,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
 
         <nav className="flex flex-1 flex-col gap-1">
-          {NAV.map(({ href, label, icon: Icon, badge }) => (
+          {NAV.map(({ href, label, icon: Icon, badgeKey }) => (
             <Link
               key={href}
               href={href}
@@ -85,7 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <Icon className="h-5 w-5" />
               {label}
-              {badge && <Count n={unread} />}
+              <Count n={countFor(badgeKey)} />
             </Link>
           ))}
         </nav>
@@ -109,7 +116,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Bottom tab bar (mobile) */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-bg-soft md:hidden">
-        {NAV.map(({ href, label, icon: Icon, badge }) => (
+        {NAV.map(({ href, label, icon: Icon, badgeKey }) => (
           <Link
             key={href}
             href={href}
@@ -119,9 +126,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           >
             <Icon className="h-5 w-5" />
-            {badge && unread > 0 && (
+            {countFor(badgeKey) > 0 && (
               <span className="absolute right-1/2 top-1.5 translate-x-3 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">
-                {unread > 99 ? "99+" : unread}
+                {countFor(badgeKey) > 99 ? "99+" : countFor(badgeKey)}
               </span>
             )}
             {label}

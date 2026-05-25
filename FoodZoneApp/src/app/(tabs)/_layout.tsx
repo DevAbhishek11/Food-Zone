@@ -3,12 +3,16 @@ import { Tabs } from 'expo-router';
 import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { useRealtime } from '@/hooks/use-realtime';
+import { useAuthStore } from '@/lib/auth-store';
 import { useUnreadCount } from '@/lib/hooks';
 
 export default function TabsLayout() {
   const scheme = useColorScheme();
   const c = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const userId = useAuthStore((s) => s.user)?.id;
   const { data: unread = 0 } = useUnreadCount();
+  useRealtime(userId);
 
   return (
     <Tabs

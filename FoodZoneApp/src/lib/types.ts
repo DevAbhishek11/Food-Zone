@@ -161,6 +161,30 @@ export interface OrderItem {
   line_total: number;
 }
 
+export interface ChatUser {
+  id: number;
+  name: string;
+  username: string;
+  avatar: string | null;
+}
+
+export interface Conversation {
+  id: number;
+  other: ChatUser | null;
+  last_message: { body: string; is_mine: boolean; created_at: string } | null;
+  unread: number;
+  last_message_at: string | null;
+}
+
+export interface Message {
+  id: number;
+  conversation_id: number;
+  body: string;
+  is_mine: boolean;
+  sender?: ChatUser;
+  created_at: string;
+}
+
 export interface NotificationActor {
   id: number;
   name: string;

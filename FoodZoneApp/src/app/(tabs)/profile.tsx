@@ -1,20 +1,34 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Button } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/lib/auth-store';
+import { useUpdateProfile } from '@/lib/hooks';
+import { useMediaUpload } from '@/lib/use-media';
 
 export default function ProfileScreen() {
   const c = useTheme();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const updateProfile = useUpdateProfile();
+  const { pickAndUpload, uploading } = useMediaUpload();
 
   if (!user) return null;
+
+  const changeAvatar = async () => {
+    const url = await pickAndUpload('avatar');
+    if (url) {
+      updateProfile.mutate(
+        { avatar: url },
+        { onError: () => Alert.alert('Error', 'Could not update avatar.') },
+      );
+    }
+  };
 
   const stats = [
     { label: 'Posts', value: user.profile?.posts_count ?? 0 },
@@ -29,7 +43,12 @@ export default function ProfileScreen() {
 
         <View style={{ backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: Spacing.four, gap: Spacing.three }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
-            <Avatar uri={user.profile?.avatar} name={user.name} size={72} />
+            <Pressable onPress={changeAvatar} disabled={uploading}>
+              <Avatar uri={user.profile?.avatar} name={user.name} size={72} />
+              <View style={{ position: 'absolute', bottom: -2, right: -2, backgroundColor: c.brand, borderRadius: 999, padding: 4 }}>
+                <Ionicons name={uploading ? 'hourglass' : 'camera'} size={12} color="#fff" />
+              </View>
+            </Pressable>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Text style={{ color: c.text, fontSize: 20, fontWeight: '700' }}>{user.name}</Text>
