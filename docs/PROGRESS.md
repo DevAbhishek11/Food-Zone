@@ -5,7 +5,7 @@ delivered across all relevant tiers and verified (`php artisan test` / web `buil
 / mobile `tsc`+`expo lint`+`expo export`). Per-phase detail lives in `WORKPHASE-N.md`;
 the index is `WORKPHASES.md`.
 
-_Last updated: 2026-05-20 · Backend tests: **105** · Mobile routes: **24** · Production roadmap: [ROADMAP.md](ROADMAP.md)_
+_Last updated: 2026-05-26 · Backend tests: **130** · Mobile routes: **27** · Production roadmap: [ROADMAP.md](ROADMAP.md)_
 
 ---
 
@@ -53,6 +53,25 @@ _Last updated: 2026-05-20 · Backend tests: **105** · Mobile routes: **24** · 
 - [x] **P18 — Chat / DMs**: conversations + messages schema, participant-guarded endpoints,
   `MessageSent` broadcast; web `/messages` + thread, mobile messages screens, "Message" on
   profiles. _(Backend + Web + Mobile)_
+- [x] **P19 — Payments**: pluggable `PaymentGateway` (mock default + real Razorpay/Stripe
+  HTTP drivers), `payments` table, `POST /orders/{id}/pay` intent, signature-verified
+  `POST /payments/webhook`, mock `confirm`, refund-on-cancel; web + mobile "Pay now" on
+  unpaid online orders. Also added `@react-native-community/netinfo` (fixes native bundling
+  of the P17 Reverb client). _(Backend + Web + Mobile)_
+- [x] **P20 — Checkout depth**: `OrderService::quote()` extracted + `POST /checkout/quote`
+  (variant/add-on pricing + lenient voucher preview); web `ItemCustomizeDialog` + promo code
+  in cart; mobile `CustomizeSheet` + `CartReviewModal` (line editor + promo). Clients now send
+  `variant_id`/`addon_ids`/`voucher_code`. _(Backend + Web + Mobile)_
+- [x] **P21 — Delivery partner flow**: `delivery` role activated; `delivery_partner_id` on orders;
+  `DeliveryController` (register, available, atomic accept, release, pick-up, deliver, my orders,
+  stats); customer/vendor notified + COD settled on delivery; web `/delivery` + mobile `/deliver`
+  dashboards (available/active/completed). _(Backend + Web + Mobile)_
+- [x] **P22 — Order timeline + post detail**: web `/posts/[id]` + `/orders/[id]`, mobile `post/[id]`
+  + `order/[id]`; threaded comment replies + delete (recursive UI both clients); full order
+  status-history timeline; +2 backend comment tests. _(Backend + Web + Mobile)_
+- [x] **P23 — Push + email-verification UX**: `push_tokens` + register/unregister + `SendPushNotification`
+  (Expo, env-gated, dispatched from `NotificationService`); mobile `expo-notifications` registration
+  (guarded); web `/verify-email` page + resend; mobile resend on profile. _(Backend + Web + Mobile)_
 
 ---
 
@@ -62,26 +81,15 @@ Ordered roughly by value. Each would follow the same convention (next phase numb
 all tiers, tests, a `WORKPHASE-N.md`).
 
 ### Next up (per [ROADMAP.md](ROADMAP.md))
-- [ ] **P19 — Payments** — Razorpay/Stripe: order payment intent, webhook, refund.
-- [ ] **P17 — Real-time (Reverb)** — live notifications + order status; replace 30s polling.
-- [ ] **Post detail & share** — dedicated post page/screen with full comment threads,
-  reply-to-comment UI, share/repost. _(vendor logo/banner upload UI also still pending)_
+- [ ] **P24 — Production hardening** — security headers, rate limiting, audit logs,
+  structured logging/monitoring, CI-friendly structure, more tests.
+- [ ] **Vendor menu CRUD on mobile** — full category/item management (web-primary today);
+  split out of P22 to keep phases coherent.
 - [ ] **Stories** — 24h ephemeral posts (`stories` + `story_views` tables, endpoints, UI rails).
 
-### Commerce depth
-- [ ] **Payments** — real Razorpay/Stripe gateway (intent, webhook, refund); today payment
-  is recorded but not charged.
-- [ ] **Item variants & add-ons at checkout** — backend supports them; clients only send base items.
-- [ ] **Vouchers UX** — apply promo codes at checkout (backend validates; no client UI yet).
-- [ ] **Delivery partner flow** — `delivery` role: assignment, accept, live status.
-- [ ] **Vendor menu CRUD on mobile** — currently web-primary.
-- [ ] **Order detail screen** — full timeline/status history (web & mobile).
-
 ### Platform / quality
-- [ ] **Push notifications** — Expo push tokens + FCM/APNs.
 - [ ] **Policy enforcement automation** — `violations` tables exist; auto warn/suspend/ban.
 - [ ] **Analytics dashboards** — richer vendor/admin charts over time.
-- [ ] **Email verification UX** — verify-email screen/flow on clients (API exists).
 - [ ] **Frontend tests** — Playwright (web) / RNTL (mobile); currently typecheck+build+bundle only.
 - [ ] **Search infra** — swap DB `LIKE` for Meilisearch when available.
 - [ ] **i18n / accessibility pass**, rate-limit tuning, image CDN, CI pipeline.

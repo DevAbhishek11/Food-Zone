@@ -4,19 +4,20 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { FavoriteButton } from "@/components/vendors/FavoriteButton";
+import { ItemCustomizeDialog } from "@/components/vendors/ItemCustomizeDialog";
 import { VendorReviews } from "@/components/vendors/VendorReviews";
 import { useAddresses } from "@/lib/hooks/use-addresses";
 import { ApiError } from "@/lib/api";
 import { useCartStore } from "@/lib/cart-store";
 import { money } from "@/lib/format";
-import { usePlaceOrder } from "@/lib/hooks/use-orders";
+import { useCheckoutQuote, usePlaceOrder } from "@/lib/hooks/use-orders";
 import { useVendorMenu } from "@/lib/hooks/use-vendors";
 import { toast } from "@/lib/toast-store";
 import type { MenuItem } from "@/lib/types";
-import { ArrowLeft, Minus, Plus, Star } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Star, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function VendorMenuPage() {
   const params = useParams<{ id: string }>();
@@ -124,6 +125,19 @@ function MenuItemRow({
   canOrder: boolean;
 }) {
   const add = useCartStore((s) => s.add);
+  const [customizing, setCustomizing] = useState(false);
+
+  const customizable =
+    (item.variants?.length ?? 0) > 0 || (item.addons?.filter((a) => a.is_available).length ?? 0) > 0;
+
+  const handleAdd = () => {
+    if (customizable) {
+      setCustomizing(true);
+      return;
+    }
+    add(vendorId, vendorName, item);
+    toast.success(`Added ${item.name}`);
+  };
 
   return (
     <div className="flex items-start gap-4 rounded-card border border-line bg-bg-soft p-4">
@@ -131,6 +145,7 @@ function MenuItemRow({
         <p className="font-medium">{item.name}</p>
         {item.description && <p className="line-clamp-2 text-sm text-muted">{item.description}</p>}
         <p className="mt-1 text-sm font-semibold text-brand">{money(item.price)}</p>
+        {customizable && <p className="text-xs text-muted">Customizable</p>}
         {item.dietary_tags?.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {item.dietary_tags.map((t) => (
@@ -143,13 +158,21 @@ function MenuItemRow({
         size="sm"
         variant={item.is_available && canOrder ? "primary" : "secondary"}
         disabled={!item.is_available || !canOrder}
-        onClick={() => {
-          add(vendorId, vendorName, item);
-          toast.success(`Added ${item.name}`);
-        }}
+        onClick={handleAdd}
       >
-        {item.is_available ? "Add" : "Sold out"}
+        {item.is_available ? (customizable ? "Choose" : "Add") : "Sold out"}
       </Button>
+
+      {customizing && (
+        <ItemCustomizeDialog
+          item={item}
+          onClose={() => setCustomizing(false)}
+          onAdd={(selection) => {
+            add(vendorId, vendorName, item, selection);
+            toast.success(`Added ${item.name}`);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -175,15 +198,47 @@ function CartPanel({
   const { data: addresses } = useAddresses();
   const [payment, setPayment] = useState<"cod" | "upi" | "card" | "wallet">(codEnabled ? "cod" : "upi");
   const [addressId, setAddressId] = useState<number | null>(null);
+  const [voucherInput, setVoucherInput] = useState("");
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
 
   const isThisVendor = cart.vendorId === vendorId;
-  const lines = isThisVendor ? cart.lines : [];
+  const lines = useMemo(() => (isThisVendor ? cart.lines : []), [isThisVendor, cart.lines]);
   const subtotal = isThisVendor ? cart.subtotal() : 0;
   const belowMin = subtotal < minOrder;
-  const total = subtotal + (subtotal > 0 ? deliveryFee : 0);
+
+  const orderItems = useMemo(
+    () =>
+      lines.map((l) => ({
+        item_id: l.itemId,
+        quantity: l.quantity,
+        variant_id: l.variantId ?? undefined,
+        addon_ids: l.addonIds.length ? l.addonIds : undefined,
+      })),
+    [lines],
+  );
+
+  // Authoritative server pricing once a voucher is applied (re-runs if the
+  // cart changes). Before that we show a local estimate for instant feedback.
+  const quote = useCheckoutQuote(
+    appliedCode ? { vendor_id: vendorId, voucher_code: appliedCode, items: orderItems } : null,
+    !!appliedCode && lines.length > 0,
+  );
+  const validVoucher = quote.data?.voucher ?? null;
+  const discount = validVoucher ? quote.data!.discount : 0;
+  const localTotal = subtotal + (subtotal > 0 ? deliveryFee : 0);
+  const total = quote.data ? quote.data.total : Math.max(0, localTotal);
 
   // Default to the user's default address once loaded.
   const effectiveAddressId = addressId ?? addresses?.find((a) => a.is_default)?.id ?? addresses?.[0]?.id ?? null;
+
+  const applyVoucher = () => {
+    const code = voucherInput.trim();
+    if (code) setAppliedCode(code);
+  };
+  const clearVoucher = () => {
+    setAppliedCode(null);
+    setVoucherInput("");
+  };
 
   const checkout = async () => {
     try {
@@ -191,9 +246,12 @@ function CartPanel({
         vendor_id: vendorId,
         payment_method: payment,
         address_id: effectiveAddressId ?? undefined,
-        items: lines.map((l) => ({ item_id: l.itemId, quantity: l.quantity })),
+        // Only send the code if the server confirmed it; avoids a 422 on a bad code.
+        voucher_code: validVoucher ? appliedCode! : undefined,
+        items: orderItems,
       });
       cart.clear();
+      clearVoucher();
       toast.success(`Order ${order.data.order_number} placed!`);
       router.push("/orders");
     } catch (e) {
@@ -211,24 +269,56 @@ function CartPanel({
         <>
           <ul className="space-y-3">
             {lines.map((l) => (
-              <li key={l.itemId} className="flex items-center gap-2">
+              <li key={l.key} className="flex items-center gap-2">
                 <div className="flex items-center rounded-lg border border-line">
-                  <button onClick={() => cart.setQuantity(l.itemId, l.quantity - 1)} className="px-2 py-1 text-muted hover:text-content" aria-label="Decrease">
+                  <button onClick={() => cart.setQuantity(l.key, l.quantity - 1)} className="px-2 py-1 text-muted hover:text-content" aria-label="Decrease">
                     <Minus className="h-3.5 w-3.5" />
                   </button>
                   <span className="w-6 text-center text-sm">{l.quantity}</span>
-                  <button onClick={() => cart.setQuantity(l.itemId, l.quantity + 1)} className="px-2 py-1 text-muted hover:text-content" aria-label="Increase">
+                  <button onClick={() => cart.setQuantity(l.key, l.quantity + 1)} className="px-2 py-1 text-muted hover:text-content" aria-label="Increase">
                     <Plus className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <span className="min-w-0 flex-1 truncate text-sm">{l.name}</span>
-                <span className="text-sm text-muted">{money(l.price * l.quantity)}</span>
+                <span className="min-w-0 flex-1 truncate text-sm">
+                  {l.name}
+                  {l.label && <span className="block truncate text-xs text-muted">{l.label}</span>}
+                </span>
+                <span className="text-sm text-muted">{money(l.unitPrice * l.quantity)}</span>
               </li>
             ))}
           </ul>
 
+          {/* Voucher */}
+          <div className="mt-4 border-t border-line pt-3">
+            {validVoucher ? (
+              <div className="flex items-center justify-between rounded-lg bg-success/10 px-3 py-2 text-sm">
+                <span className="font-medium text-success">{validVoucher.code} applied · −{money(discount)}</span>
+                <button onClick={clearVoucher} aria-label="Remove voucher" className="text-muted hover:text-content">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={voucherInput}
+                  onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
+                  placeholder="Promo code"
+                  className="h-9 min-w-0 flex-1 rounded-lg border border-line bg-bg px-2 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-brand/60"
+                  onKeyDown={(e) => e.key === "Enter" && applyVoucher()}
+                />
+                <Button size="sm" variant="secondary" onClick={applyVoucher} loading={quote.isFetching} disabled={!voucherInput.trim()}>
+                  Apply
+                </Button>
+              </div>
+            )}
+            {appliedCode && quote.data?.voucher_error && (
+              <p className="mt-1 text-xs text-danger">{quote.data.voucher_error}</p>
+            )}
+          </div>
+
           <div className="mt-4 space-y-1 border-t border-line pt-3 text-sm">
             <Row label="Subtotal" value={money(subtotal)} />
+            {discount > 0 && <Row label="Discount" value={`−${money(discount)}`} />}
             <Row label="Delivery" value={deliveryFee > 0 ? money(deliveryFee) : "Free"} />
             <Row label="Total" value={money(total)} bold />
           </div>

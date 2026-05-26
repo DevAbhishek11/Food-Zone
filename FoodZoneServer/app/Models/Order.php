@@ -19,6 +19,7 @@ class Order extends Model
         'subtotal', 'discount', 'delivery_charge', 'tax', 'total', 'commission',
         'payment_method', 'payment_status', 'voucher_id', 'notes',
         'cancellation_reason', 'delivery_address',
+        'delivery_partner_id', 'assigned_at', 'picked_up_at',
         'accepted_at', 'delivered_at', 'cancelled_at',
     ];
 
@@ -31,6 +32,8 @@ class Order extends Model
         'total' => 'float',
         'commission' => 'float',
         'delivery_address' => 'array',
+        'assigned_at' => 'datetime',
+        'picked_up_at' => 'datetime',
         'accepted_at' => 'datetime',
         'delivered_at' => 'datetime',
         'cancelled_at' => 'datetime',
@@ -46,6 +49,11 @@ class Order extends Model
         return $this->belongsTo(Vendor::class);
     }
 
+    public function deliveryPartner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'delivery_partner_id');
+    }
+
     public function address(): BelongsTo
     {
         return $this->belongsTo(UserAddress::class, 'address_id');
@@ -54,6 +62,11 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
     }
 
     public function statusHistory(): HasMany

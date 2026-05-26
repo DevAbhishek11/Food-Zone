@@ -10,7 +10,7 @@ import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { money, timeAgo } from "@/lib/format";
 import { useReorder } from "@/lib/hooks/use-favorites";
-import { useOrders } from "@/lib/hooks/use-orders";
+import { useOrders, usePayOrder } from "@/lib/hooks/use-orders";
 import { toast } from "@/lib/toast-store";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,6 +35,8 @@ export default function OrdersPage() {
   const orders = data?.pages.flatMap((p) => p.data) ?? [];
   const [rating, setRating] = useState<{ id: number; vendor: string } | null>(null);
   const reorder = useReorder();
+  const pay = usePayOrder();
+  const [payingId, setPayingId] = useState<number | null>(null);
 
   const doReorder = async (orderId: number) => {
     try {
@@ -43,6 +45,18 @@ export default function OrdersPage() {
       router.refresh();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Could not reorder.");
+    }
+  };
+
+  const doPay = async (orderId: number) => {
+    setPayingId(orderId);
+    try {
+      await pay.mutateAsync(orderId);
+      toast.success("Payment successful.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Payment failed.");
+    } finally {
+      setPayingId(null);
     }
   };
 
@@ -62,12 +76,12 @@ export default function OrdersPage() {
             {orders.map((o) => (
               <div key={o.id} className="rounded-card border border-line bg-bg-soft p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  <Link href={`/orders/${o.id}`} className="min-w-0 hover:opacity-80">
                     <p className="font-medium">{o.vendor?.name ?? "Restaurant"}</p>
                     <p className="text-xs text-muted">
                       {o.order_number} · {timeAgo(o.created_at)}
                     </p>
-                  </div>
+                  </Link>
                   <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium capitalize", STATUS_STYLE[o.status] ?? "bg-surface text-muted")}>
                     {o.status.replace(/_/g, " ")}
                   </span>
@@ -78,6 +92,23 @@ export default function OrdersPage() {
                   </span>
                   <span className="font-semibold">{money(o.total)}</span>
                 </div>
+
+                {o.payment_method !== "cod" && (
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
+                    {o.payment_status === "paid" ? (
+                      <span className="text-xs font-medium text-success">✓ Paid online</span>
+                    ) : o.payment_status === "refunded" ? (
+                      <span className="text-xs font-medium text-muted">Refunded</span>
+                    ) : (
+                      <span className="text-xs font-medium text-warning">Awaiting payment</span>
+                    )}
+                    {o.payable && (
+                      <Button size="sm" loading={payingId === o.id} onClick={() => doPay(o.id)}>
+                        Pay {money(o.total)}
+                      </Button>
+                    )}
+                  </div>
+                )}
 
                 {TERMINAL.includes(o.status) && (
                   <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">

@@ -13,12 +13,12 @@ tiers with tests + a `WORKPHASE-N.md`, and updates `PROGRESS.md`.
 | 16 | **Meilisearch (Scout)** | Fast relevant search with graceful DB fallback | ✅ Done |
 | 17 | **Real-time (Reverb)** | Live notifications + order status; replace 30s polling | ✅ Done |
 | 18 | **Chat / DMs** | User↔vendor messaging (real-time) | ✅ Done |
-| 19 | **Payments** | Razorpay/Stripe: intent, webhook, refund | ⏳ Next |
-| 20 | **Checkout depth** | Variants/add-ons + voucher/promo UX at checkout | ⏳ |
-| 21 | **Delivery partner** | `delivery` role: assignment, accept, live status | ⏳ |
-| 22 | **Order timeline + post detail** | Status history UI, threaded comments, mobile menu mgmt | ⏳ |
-| 23 | **Push + email verification UX** | Expo push (FCM/APNs); verify-email screens | ⏳ |
-| 24 | **Production hardening** | Security headers, rate limits, audit logs, logging/monitoring, CI, more tests | ⏳ |
+| 19 | **Payments** | Razorpay/Stripe: intent, webhook, refund | ✅ Done |
+| 20 | **Checkout depth** | Variants/add-ons + voucher/promo UX at checkout | ✅ Done |
+| 21 | **Delivery partner** | `delivery` role: assignment, accept, live status | ✅ Done |
+| 22 | **Order timeline + post detail** | Status-history UI + post detail with threaded comments | ✅ Done |
+| 23 | **Push + email verification UX** | Expo push (FCM/APNs); verify-email screens | ✅ Done |
+| 24 | **Production hardening** | Security headers, rate limits, audit logs, logging/monitoring, CI, more tests | ⏳ Next |
 
 ## Notes on infrastructure phases (P15–P19)
 Redis, Meilisearch, Reverb, and payment gateways are **not running in the current

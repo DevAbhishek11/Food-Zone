@@ -194,6 +194,12 @@ export interface Order {
   commission: number;
   payment_method: string;
   payment_status: string;
+  payable?: boolean;
+  delivery_partner_id?: number | null;
+  delivery_partner?: { id: number; name: string; username: string } | null;
+  assigned_at?: string | null;
+  picked_up_at?: string | null;
+  delivery_address?: { label?: string; address?: string; city?: string; state?: string; pincode?: string } | null;
   notes: string | null;
   items?: OrderItem[];
   rating?: { rating: number; review: string | null } | null;

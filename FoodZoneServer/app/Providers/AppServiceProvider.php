@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Contracts\PaymentGateway;
+use App\Services\Payments\MockPaymentGateway;
+use App\Services\Payments\RazorpayPaymentGateway;
+use App\Services\Payments\StripePaymentGateway;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\ServiceProvider;
 
@@ -12,7 +16,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Resolve the active payment gateway from config. Defaults to `mock`
+        // so development and tests run without external credentials.
+        $this->app->singleton(PaymentGateway::class, fn () => match (config('payments.gateway', 'mock')) {
+            'razorpay' => new RazorpayPaymentGateway,
+            'stripe' => new StripePaymentGateway,
+            default => new MockPaymentGateway,
+        });
     }
 
     /**

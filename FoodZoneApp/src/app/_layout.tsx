@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
 import { useAuthStore } from '@/lib/auth-store';
+import { usePushRegistration } from '@/lib/use-push';
 import { queryClient } from '@/lib/query-client';
 
 /** Redirects between the auth screens and the app based on session status. */
@@ -34,6 +35,7 @@ function RootNavigator() {
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const status = useAuthStore((s) => s.status);
   useAuthRedirect();
+  usePushRegistration();
 
   if (status === 'idle' || status === 'loading') {
     return (
@@ -50,10 +52,13 @@ function RootNavigator() {
       <Stack.Screen name="register" />
       <Stack.Screen name="vendor/[id]" options={{ presentation: 'card' }} />
       <Stack.Screen name="user/[username]" options={{ presentation: 'card' }} />
+      <Stack.Screen name="post/[id]" options={{ presentation: 'card' }} />
+      <Stack.Screen name="order/[id]" options={{ presentation: 'card' }} />
       <Stack.Screen name="manage/index" options={{ presentation: 'card' }} />
       <Stack.Screen name="manage/reviews" options={{ presentation: 'card' }} />
       <Stack.Screen name="manage/hours" options={{ presentation: 'card' }} />
       <Stack.Screen name="admin/index" options={{ presentation: 'card' }} />
+      <Stack.Screen name="deliver/index" options={{ presentation: 'card' }} />
       <Stack.Screen name="search" options={{ presentation: 'card' }} />
       <Stack.Screen name="addresses" options={{ presentation: 'card' }} />
       <Stack.Screen name="messages/index" options={{ presentation: 'card' }} />

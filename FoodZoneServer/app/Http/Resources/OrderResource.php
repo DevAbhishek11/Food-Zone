@@ -26,6 +26,12 @@ class OrderResource extends JsonResource
                 'name' => $this->user->name,
                 'username' => $this->user->username,
             ]),
+            'delivery_partner_id' => $this->delivery_partner_id,
+            'delivery_partner' => $this->whenLoaded('deliveryPartner', fn () => $this->deliveryPartner ? [
+                'id' => $this->deliveryPartner->id,
+                'name' => $this->deliveryPartner->name,
+                'username' => $this->deliveryPartner->username,
+            ] : null),
             'subtotal' => (float) $this->subtotal,
             'discount' => (float) $this->discount,
             'delivery_charge' => (float) $this->delivery_charge,
@@ -34,6 +40,10 @@ class OrderResource extends JsonResource
             'commission' => (float) $this->commission,
             'payment_method' => $this->payment_method,
             'payment_status' => $this->payment_status,
+            // True when an online order still needs to be paid (drives "Pay now").
+            'payable' => $this->payment_method !== 'cod'
+                && $this->payment_status !== 'paid'
+                && ! in_array($this->status?->value, ['cancelled', 'rejected'], true),
             'notes' => $this->notes,
             'cancellation_reason' => $this->cancellation_reason,
             'delivery_address' => $this->delivery_address,
@@ -48,6 +58,8 @@ class OrderResource extends JsonResource
                 'at' => $h->created_at?->toIso8601String(),
             ])),
             'accepted_at' => $this->accepted_at?->toIso8601String(),
+            'assigned_at' => $this->assigned_at?->toIso8601String(),
+            'picked_up_at' => $this->picked_up_at?->toIso8601String(),
             'delivered_at' => $this->delivered_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
         ];

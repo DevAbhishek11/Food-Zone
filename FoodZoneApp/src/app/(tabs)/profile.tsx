@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Button } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { api, ApiError } from '@/lib/api';
 import { useAuthStore } from '@/lib/auth-store';
 import { useUpdateProfile } from '@/lib/hooks';
 import { useMediaUpload } from '@/lib/use-media';
@@ -17,8 +19,21 @@ export default function ProfileScreen() {
   const logout = useAuthStore((s) => s.logout);
   const updateProfile = useUpdateProfile();
   const { pickAndUpload, uploading } = useMediaUpload();
+  const [resending, setResending] = useState(false);
 
   if (!user) return null;
+
+  const resendVerification = async () => {
+    setResending(true);
+    try {
+      await api.post('/auth/resend-verification');
+      Alert.alert('Verification sent', 'Check your inbox for the verification link.');
+    } catch (e) {
+      Alert.alert('Could not send', e instanceof ApiError ? e.message : 'Please try again.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   const changeAvatar = async () => {
     const url = await pickAndUpload('avatar');
@@ -60,9 +75,19 @@ export default function ProfileScreen() {
 
           {!!user.profile?.bio && <Text style={{ color: c.text }}>{user.profile.bio}</Text>}
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Ionicons name="mail-outline" size={16} color={c.textSecondary} />
             <Text style={{ color: c.textSecondary }}>{user.email}</Text>
+            {!user.email_verified && (
+              <>
+                <Text style={{ color: c.warning, fontSize: 12, fontWeight: '600' }}>Unverified</Text>
+                <Pressable onPress={resendVerification} disabled={resending}>
+                  <Text style={{ color: c.brand, fontSize: 12, fontWeight: '600' }}>
+                    {resending ? 'Sending…' : 'Resend'}
+                  </Text>
+                </Pressable>
+              </>
+            )}
           </View>
 
           <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: c.border, paddingTop: Spacing.three }}>
@@ -76,6 +101,15 @@ export default function ProfileScreen() {
         </View>
 
         <Button title="Delivery addresses" variant="secondary" fullWidth onPress={() => router.push('/addresses')} />
+
+        {(user.role === 'user' || user.role === 'delivery') && (
+          <Button
+            title={user.role === 'delivery' ? 'Delivery dashboard' : 'Become a delivery partner'}
+            variant="secondary"
+            fullWidth
+            onPress={() => router.push('/deliver')}
+          />
+        )}
 
         {user.role === 'vendor' && (
           <Button title="Manage store" variant="secondary" fullWidth onPress={() => router.push('/manage')} />

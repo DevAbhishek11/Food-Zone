@@ -23,7 +23,14 @@
       "Bash(php -r \"require 'vendor/autoload.php'; echo class_exists\\('Laravel\\\\\\\\\\\\\\\\Scout\\\\\\\\\\\\\\\\Searchable'\\)?'scout OK':'scout MISSING'; echo PHP_EOL; echo class_exists\\('Meilisearch\\\\\\\\\\\\\\\\Client'\\)?'meili-client OK':'meili-client MISSING';\")",
       "Bash(SCOUT_DRIVER=meilisearch php artisan about --only=drivers)",
       "Bash(SCOUT_DRIVER=meilisearch php artisan tinker --execute=\"echo config\\('scout.driver'\\);\")",
-      "Bash(php -r \"require 'vendor/autoload.php'; echo class_exists\\('Laravel\\\\\\\\\\\\\\\\Reverb\\\\\\\\\\\\\\\\ReverbServiceProvider'\\)?'reverb OK':'reverb MISSING';\")"
+      "Bash(php -r \"require 'vendor/autoload.php'; echo class_exists\\('Laravel\\\\\\\\\\\\\\\\Reverb\\\\\\\\\\\\\\\\ReverbServiceProvider'\\)?'reverb OK':'reverb MISSING';\")",
+      "Read(//e/e/Project/FoodZoneApp/src/**)",
+      "Read(//e/e/Project/FoodZoneApp/src/lib/**)",
+      "Read(//e/e/Project/FoodZoneServer/app/Models/**)",
+      "Read(//e/e/Project/foodzoneweb/**)",
+      "Bash(grep -E \"\\\\.tsx$\")",
+      "Bash(grep -nE \"useComments|useAddComment|useDeleteComment|usePost\\\\b|useOrderDetail|'comments'|posts/\\\\$\" src/lib/hooks.ts)",
+      "WebFetch(domain:docs.expo.dev)"
     ]
   }
 }

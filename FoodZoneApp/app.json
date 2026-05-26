@@ -41,7 +41,8 @@
         {
           "photosPermission": "FoodZone needs access to your photos so you can upload images to posts and your profile."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,

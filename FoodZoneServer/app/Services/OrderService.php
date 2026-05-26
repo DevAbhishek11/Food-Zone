@@ -21,12 +21,22 @@ class OrderService
     public function __construct(private NotificationService $notifications) {}
 
     /**
-     * Place an order. $payload keys: vendor_id, address_id?, payment_method,
-     * voucher_code?, notes?, items[] = {item_id, quantity, variant_id?, addon_ids?[]}.
+     * Price an order without persisting it. Returns vendor + resolved line
+     * items + the full money breakdown (subtotal/discount/delivery/tax/total/
+     * commission) + the applied voucher. Shared by {@see place()} and the
+     * checkout-quote endpoint so previews match the real charge exactly.
+     *
+     * $payload keys: vendor_id, voucher_code?, items[] =
+     *   {item_id, quantity, variant_id?, addon_ids?[]}.
+     *
+     * @param  bool  $strictVoucher  When true an invalid voucher throws; when
+     *   false the error is returned in `voucher_error` and pricing continues
+     *   without the discount (used for live cart previews).
+     * @return array{vendor: Vendor, voucher: ?Voucher, voucher_error: ?string, lines: array<int,array<string,mixed>>, subtotal: float, discount: float, delivery_charge: float, tax: float, total: float, commission: float}
      *
      * @throws ApiException
      */
-    public function place(User $user, array $payload): Order
+    public function quote(User $user, array $payload, bool $strictVoucher = true): array
     {
         /** @var Vendor $vendor */
         $vendor = Vendor::find($payload['vendor_id']);
@@ -109,6 +119,73 @@ class OrderService
             );
         }
 
+        // Delivery charge
+        $deliveryCharge = 0.0;
+        if ($vendor->delivery_enabled) {
+            $deliveryCharge = (float) $vendor->delivery_fee;
+            if ($vendor->free_delivery_above !== null && $subtotal >= (float) $vendor->free_delivery_above) {
+                $deliveryCharge = 0.0;
+            }
+        }
+
+        // Voucher — strict when placing, lenient when previewing.
+        $discount = 0.0;
+        $voucher = null;
+        $voucherError = null;
+        if (! empty($payload['voucher_code'])) {
+            $found = Voucher::where('code', $payload['voucher_code'])->first();
+            if (! $found) {
+                $voucherError = 'Invalid voucher code.';
+            } elseif ($error = $found->validateFor($user, $subtotal, $vendor->id)) {
+                $voucherError = $error;
+            } else {
+                $voucher = $found;
+                $discount = $voucher->discountFor($subtotal);
+            }
+
+            if ($voucherError !== null && $strictVoucher) {
+                throw ApiException::make($voucherError, 422);
+            }
+        }
+
+        $tax = 0.0;
+        $total = round($subtotal - $discount + $deliveryCharge + $tax, 2);
+        $commission = round($subtotal * ((float) $vendor->commission_rate / 100), 2);
+
+        return [
+            'vendor' => $vendor,
+            'voucher' => $voucher,
+            'voucher_error' => $voucherError,
+            'lines' => $lines,
+            'subtotal' => $subtotal,
+            'discount' => $discount,
+            'delivery_charge' => $deliveryCharge,
+            'tax' => $tax,
+            'total' => $total,
+            'commission' => $commission,
+        ];
+    }
+
+    /**
+     * Place an order. $payload keys: vendor_id, address_id?, payment_method,
+     * voucher_code?, notes?, items[] = {item_id, quantity, variant_id?, addon_ids?[]}.
+     *
+     * @throws ApiException
+     */
+    public function place(User $user, array $payload): Order
+    {
+        $quote = $this->quote($user, $payload);
+        /** @var Vendor $vendor */
+        $vendor = $quote['vendor'];
+        $lines = $quote['lines'];
+        $subtotal = $quote['subtotal'];
+        $discount = $quote['discount'];
+        $deliveryCharge = $quote['delivery_charge'];
+        $tax = $quote['tax'];
+        $total = $quote['total'];
+        $commission = $quote['commission'];
+        $voucher = $quote['voucher'];
+
         // Payment method validation
         $paymentMethod = $payload['payment_method'] ?? 'cod';
         if ($paymentMethod === 'cod' && ! $vendor->cod_enabled) {
@@ -125,33 +202,6 @@ class OrderService
             }
             $addressSnapshot = $address->only(['label', 'address', 'city', 'state', 'pincode', 'landmark', 'lat', 'lng']);
         }
-
-        // Delivery charge
-        $deliveryCharge = 0.0;
-        if ($vendor->delivery_enabled) {
-            $deliveryCharge = (float) $vendor->delivery_fee;
-            if ($vendor->free_delivery_above !== null && $subtotal >= (float) $vendor->free_delivery_above) {
-                $deliveryCharge = 0.0;
-            }
-        }
-
-        // Voucher
-        $discount = 0.0;
-        $voucher = null;
-        if (! empty($payload['voucher_code'])) {
-            $voucher = Voucher::where('code', $payload['voucher_code'])->first();
-            if (! $voucher) {
-                throw ApiException::make('Invalid voucher code.', 422);
-            }
-            if ($error = $voucher->validateFor($user, $subtotal, $vendor->id)) {
-                throw ApiException::make($error, 422);
-            }
-            $discount = $voucher->discountFor($subtotal);
-        }
-
-        $tax = 0.0;
-        $total = round($subtotal - $discount + $deliveryCharge + $tax, 2);
-        $commission = round($subtotal * ((float) $vendor->commission_rate / 100), 2);
 
         return DB::transaction(function () use (
             $user, $vendor, $lines, $subtotal, $discount, $deliveryCharge, $tax,

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Events\NotificationCreated;
+use App\Jobs\SendPushNotification;
 use App\Models\Notification;
 use App\Models\User;
 
@@ -40,6 +41,12 @@ class NotificationService
         ]);
 
         event(new NotificationCreated($notification));
+
+        // Fan out to the recipient's devices via Expo (off the request path).
+        // Only dispatched when push is configured — see config/push.php.
+        if (config('push.enabled')) {
+            SendPushNotification::dispatch($notification->user_id, $title, $message ?? '', $data);
+        }
 
         return $notification;
     }

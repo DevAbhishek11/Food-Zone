@@ -67,10 +67,10 @@ export function PostCard({ post }: { post: Post }) {
           <Ionicons name={liked ? 'heart' : 'heart-outline'} size={22} color={liked ? c.brand : c.textSecondary} />
           <Text style={{ color: liked ? c.brand : c.textSecondary }}>{likes}</Text>
         </Pressable>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Pressable onPress={() => router.push(`/post/${post.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Ionicons name="chatbubble-outline" size={20} color={c.textSecondary} />
           <Text style={{ color: c.textSecondary }}>{post.comments_count}</Text>
-        </View>
+        </Pressable>
       </View>
     </View>
   );

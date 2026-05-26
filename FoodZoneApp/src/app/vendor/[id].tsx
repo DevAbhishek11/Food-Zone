@@ -1,18 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorView, Loading } from '@/components/ui';
+import { CartReviewModal } from '@/components/cart-review-modal';
+import { CustomizeSheet } from '@/components/customize-sheet';
 import { FavoriteHeart } from '@/components/favorite-heart';
 import { VendorReviews } from '@/components/vendor-reviews';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCartStore } from '@/lib/cart-store';
-import { ApiError } from '@/lib/api';
 import { money } from '@/lib/format';
-import { useAddresses, usePlaceOrder, useVendorMenu } from '@/lib/hooks';
+import { useAddresses, useVendorMenu } from '@/lib/hooks';
 import type { MenuItem, Vendor } from '@/lib/types';
 
 export default function VendorMenuScreen() {
@@ -22,7 +24,7 @@ export default function VendorMenuScreen() {
   const { data, isLoading, isError, refetch } = useVendorMenu(id);
   const { data: addresses } = useAddresses();
   const cart = useCartStore();
-  const placeOrder = usePlaceOrder();
+  const [reviewing, setReviewing] = useState(false);
 
   if (isLoading) {
     return (
@@ -48,27 +50,9 @@ export default function VendorMenuScreen() {
   const isThisVendor = cart.vendorId === vendor.id;
   const subtotal = isThisVendor ? cart.subtotal() : 0;
   const count = isThisVendor ? cart.count() : 0;
-  const belowMin = subtotal < vendor.min_order_value;
-  const total = subtotal + (subtotal > 0 ? vendor.delivery_fee : 0);
+  const estTotal = subtotal + (subtotal > 0 ? vendor.delivery_fee : 0);
 
   const deliveryAddress = addresses?.find((a) => a.is_default) ?? addresses?.[0] ?? null;
-
-  const checkout = async () => {
-    try {
-      const order = await placeOrder.mutateAsync({
-        vendor_id: vendor.id,
-        payment_method: vendor.cod_enabled ? 'cod' : 'upi',
-        address_id: deliveryAddress?.id,
-        items: cart.lines.map((l) => ({ item_id: l.itemId, quantity: l.quantity })),
-      });
-      cart.clear();
-      Alert.alert('Order placed', `Your order ${order.data.order_number} is confirmed.`, [
-        { text: 'View orders', onPress: () => router.replace('/orders') },
-      ]);
-    } catch (e) {
-      Alert.alert('Could not place order', e instanceof ApiError ? e.message : 'Please try again.');
-    }
-  };
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.background }}>
@@ -122,26 +106,31 @@ export default function VendorMenuScreen() {
       </ScrollView>
 
       {count > 0 && (
-        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: Spacing.three, backgroundColor: c.card, borderTopWidth: 1, borderTopColor: c.border, gap: Spacing.two }}>
-          <Pressable onPress={() => router.push('/addresses')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="location-outline" size={14} color={c.textSecondary} />
-            <Text style={{ color: c.textSecondary, fontSize: 12 }}>
-              {deliveryAddress ? `Deliver to ${deliveryAddress.label} · ${deliveryAddress.city}` : 'Add a delivery address'}
-            </Text>
-          </Pressable>
-          {belowMin && (
-            <Text style={{ color: c.warning, fontSize: 12 }}>
-              Add {money(vendor.min_order_value - subtotal)} more to reach the minimum order.
-            </Text>
-          )}
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: Spacing.three, backgroundColor: c.card, borderTopWidth: 1, borderTopColor: c.border }}>
           <Button
-            title={vendor.is_open ? `Place order · ${count} item(s) · ${money(total)}` : 'Restaurant closed'}
-            onPress={checkout}
-            loading={placeOrder.isPending}
-            disabled={!vendor.is_open || belowMin}
+            title={`Review order · ${count} item(s) · ${money(estTotal)}`}
+            onPress={() => setReviewing(true)}
             fullWidth
           />
         </View>
+      )}
+
+      {reviewing && (
+        <CartReviewModal
+          vendor={vendor}
+          address={deliveryAddress}
+          onClose={() => setReviewing(false)}
+          onEditAddress={() => {
+            setReviewing(false);
+            router.push('/addresses');
+          }}
+          onPlaced={(orderNumber) => {
+            setReviewing(false);
+            Alert.alert('Order placed', `Your order ${orderNumber} is confirmed.`, [
+              { text: 'View orders', onPress: () => router.replace('/orders') },
+            ]);
+          }}
+        />
       )}
     </SafeAreaView>
   );
@@ -150,8 +139,17 @@ export default function VendorMenuScreen() {
 function MenuRow({ item, vendor }: { item: MenuItem; vendor: Vendor }) {
   const c = useTheme();
   const cart = useCartStore();
-  const line = cart.vendorId === vendor.id ? cart.lines.find((l) => l.itemId === item.id) : undefined;
+  const [customizing, setCustomizing] = useState(false);
+
+  const customizable =
+    (item.variants?.length ?? 0) > 0 || (item.addons?.filter((a) => a.is_available).length ?? 0) > 0;
   const disabled = !item.is_available || !vendor.is_open;
+
+  // For the inline stepper we track the plain (un-customized) line; customized
+  // combos are managed in the cart review sheet.
+  const mine = cart.vendorId === vendor.id ? cart.lines.filter((l) => l.itemId === item.id) : [];
+  const plainLine = mine.find((l) => l.variantId === null && l.addonIds.length === 0);
+  const totalQty = mine.reduce((n, l) => n + l.quantity, 0);
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two, backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border, padding: Spacing.three }}>
@@ -159,14 +157,28 @@ function MenuRow({ item, vendor }: { item: MenuItem; vendor: Vendor }) {
         <Text style={{ color: c.text, fontWeight: '600' }}>{item.name}</Text>
         {!!item.description && <Text numberOfLines={2} style={{ color: c.textSecondary, fontSize: 13 }}>{item.description}</Text>}
         <Text style={{ color: c.brand, fontWeight: '700', marginTop: 4 }}>{money(item.price)}</Text>
+        {customizable && <Text style={{ color: c.textSecondary, fontSize: 12 }}>Customizable</Text>}
       </View>
 
-      {line ? (
+      {customizable ? (
+        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+          <Pressable
+            onPress={() => setCustomizing(true)}
+            disabled={disabled}
+            style={{ paddingHorizontal: 14, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: disabled ? c.backgroundElement : c.brand }}
+          >
+            <Text style={{ color: disabled ? c.textSecondary : '#fff', fontWeight: '600' }}>
+              {item.is_available ? 'Choose' : 'Sold out'}
+            </Text>
+          </Pressable>
+          {totalQty > 0 && <Text style={{ color: c.textSecondary, fontSize: 12 }}>{totalQty} in cart</Text>}
+        </View>
+      ) : plainLine ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
-          <Pressable onPress={() => cart.setQuantity(item.id, line.quantity - 1)} hitSlop={8}>
+          <Pressable onPress={() => cart.setQuantity(plainLine.key, plainLine.quantity - 1)} hitSlop={8}>
             <Ionicons name="remove-circle" size={28} color={c.brand} />
           </Pressable>
-          <Text style={{ color: c.text, fontWeight: '700', minWidth: 18, textAlign: 'center' }}>{line.quantity}</Text>
+          <Text style={{ color: c.text, fontWeight: '700', minWidth: 18, textAlign: 'center' }}>{plainLine.quantity}</Text>
           <Pressable onPress={() => cart.add(vendor.id, vendor.name, item)} hitSlop={8}>
             <Ionicons name="add-circle" size={28} color={c.brand} />
           </Pressable>
@@ -181,6 +193,14 @@ function MenuRow({ item, vendor }: { item: MenuItem; vendor: Vendor }) {
             {item.is_available ? 'Add' : 'Sold out'}
           </Text>
         </Pressable>
+      )}
+
+      {customizing && (
+        <CustomizeSheet
+          item={item}
+          onClose={() => setCustomizing(false)}
+          onAdd={(selection) => cart.add(vendor.id, vendor.name, item, selection)}
+        />
       )}
     </View>
   );

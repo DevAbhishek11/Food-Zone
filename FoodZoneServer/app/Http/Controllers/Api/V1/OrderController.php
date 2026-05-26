@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Contracts\PaymentGateway;
 use App\Enums\OrderStatus;
 use App\Events\OrderStatusUpdated;
 use App\Exceptions\ApiException;
@@ -11,6 +12,7 @@ use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\UserAddress;
 use App\Services\NotificationService;
 use App\Services\OrderService;
@@ -18,11 +20,15 @@ use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
-    public function __construct(private NotificationService $notifications) {}
+    public function __construct(
+        private NotificationService $notifications,
+        private PaymentGateway $payments,
+    ) {}
 
     /** Place a new order. */
     public function store(StoreOrderRequest $request, OrderService $orders): JsonResponse
@@ -125,12 +131,28 @@ class OrderController extends Controller
 
         $reason = $request->validate(['reason' => ['nullable', 'string', 'max:255']])['reason'] ?? 'Cancelled by customer.';
 
+        $wasPaid = $order->payment_status === 'paid';
+
         $order->update([
             'status' => OrderStatus::Cancelled->value,
             'cancellation_reason' => $reason,
             'cancelled_at' => now(),
-            'payment_status' => $order->payment_status === 'paid' ? 'refunded' : $order->payment_status,
+            'payment_status' => $wasPaid ? 'refunded' : $order->payment_status,
         ]);
+
+        // Refund a captured online payment via the gateway (best-effort: the
+        // order is already marked refunded; a gateway hiccup is logged, not fatal).
+        if ($wasPaid) {
+            $payment = $order->payments()->where('status', 'paid')->latest()->first();
+            if ($payment) {
+                try {
+                    $this->payments->refund($payment);
+                } catch (\Throwable $e) {
+                    Log::warning('Refund call failed on cancel', ['order' => $order->id, 'error' => $e->getMessage()]);
+                }
+                $payment->update(['status' => 'refunded']);
+            }
+        }
         $order->statusHistory()->create([
             'status' => OrderStatus::Cancelled->value,
             'changed_by' => $request->user()->id,

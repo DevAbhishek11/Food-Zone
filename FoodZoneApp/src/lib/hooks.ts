@@ -2,7 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { api } from './api';
 import { useAuthStore } from './auth-store';
-import type { Address, ApiEnvelope, AppNotification, Conversation, Message, OperatingHour, Order, Post, Review, User, Vendor, VendorMenu } from './types';
+import type { Address, ApiEnvelope, AppNotification, Comment, Conversation, Message, OperatingHour, Order, Post, Review, User, Vendor, VendorMenu } from './types';
 
 export interface AddressInput {
   label?: string;
@@ -102,6 +102,33 @@ export function useReorder() {
   });
 }
 
+interface PaymentIntent {
+  payment_id: number;
+  gateway: string;
+  intent_id: string;
+  amount: number;
+  currency: string;
+}
+
+/**
+ * Pay for an online (non-COD) order. The `mock` gateway confirms immediately;
+ * real gateways (razorpay/stripe) would hand the intent to their checkout SDK,
+ * which confirms via the server webhook.
+ */
+export function usePayOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderId: number) => {
+      const intent = await api.post<PaymentIntent>(`/orders/${orderId}/pay`);
+      if (intent.data.gateway === 'mock') {
+        await api.post(`/payments/${intent.data.payment_id}/confirm`);
+      }
+      return intent.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
+  });
+}
+
 export function useVendorReviews(idOrSlug: string) {
   return useInfiniteQuery({
     queryKey: ['vendor-reviews', idOrSlug],
@@ -119,11 +146,19 @@ export function useRateOrder(orderId: number) {
   });
 }
 
+export interface PlaceOrderItem {
+  item_id: number;
+  quantity: number;
+  variant_id?: number | null;
+  addon_ids?: number[];
+}
+
 export interface PlaceOrderInput {
   vendor_id: number;
   payment_method: 'cod' | 'upi' | 'card' | 'wallet';
   address_id?: number;
-  items: { item_id: number; quantity: number }[];
+  voucher_code?: string;
+  items: PlaceOrderItem[];
 }
 
 export function usePlaceOrder() {
@@ -131,6 +166,98 @@ export function usePlaceOrder() {
   return useMutation({
     mutationFn: (input: PlaceOrderInput) => api.post<Order>('/orders', input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
+  });
+}
+
+export interface CheckoutQuote {
+  subtotal: number;
+  discount: number;
+  delivery_charge: number;
+  tax: number;
+  total: number;
+  voucher: { code: string; description: string | null; discount: number } | null;
+  voucher_error: string | null;
+  lines: { item_id: number; item_name: string; quantity: number; unit_price: number; line_total: number }[];
+}
+
+export interface QuoteInput {
+  vendor_id: number;
+  voucher_code?: string;
+  items: PlaceOrderItem[];
+}
+
+/**
+ * Authoritative cart pricing (variants/add-ons + voucher) from the server.
+ * Enabled on demand (typically once a voucher is applied) and re-runs when the
+ * cart changes, so the shown discount/total matches what placement will charge.
+ */
+export function useCheckoutQuote(input: QuoteInput | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['checkout-quote', input],
+    queryFn: () => api.post<CheckoutQuote>('/checkout/quote', input!).then((r) => r.data),
+    enabled: enabled && !!input && input.items.length > 0,
+    staleTime: 0,
+  });
+}
+
+// ---- Delivery partner -------------------------------------------------------
+
+export interface DeliveryStats {
+  active: number;
+  delivered_today: number;
+  total_delivered: number;
+}
+
+export function useDeliveryStats(enabled = true) {
+  return useQuery({
+    queryKey: ['delivery-stats'],
+    queryFn: () => api.get<DeliveryStats>('/delivery/stats').then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useAvailableDeliveries(enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ['delivery-available'],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<Order[]>('/delivery/available', { query: { page: pageParam } }),
+    getNextPageParam: nextPage,
+    enabled,
+    refetchInterval: 20_000,
+  });
+}
+
+export function useMyDeliveries(status: 'active' | 'completed', enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ['delivery-mine', status],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<Order[]>('/delivery/orders', { query: { status, page: pageParam } }),
+    getNextPageParam: nextPage,
+    enabled,
+  });
+}
+
+function useDeliveryAction(action: 'accept' | 'release' | 'pick-up' | 'deliver') {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orderId: number) => api.post<Order>(`/delivery/orders/${orderId}/${action}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['delivery-available'] });
+      qc.invalidateQueries({ queryKey: ['delivery-mine'] });
+      qc.invalidateQueries({ queryKey: ['delivery-stats'] });
+      qc.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+}
+
+export const useAcceptDelivery = () => useDeliveryAction('accept');
+export const useReleaseDelivery = () => useDeliveryAction('release');
+export const usePickUpDelivery = () => useDeliveryAction('pick-up');
+export const useDeliverOrder = () => useDeliveryAction('deliver');
+
+export function useBecomeDeliveryPartner() {
+  return useMutation({
+    mutationFn: () => api.post<User>('/delivery/register').then((r) => r.data),
   });
 }
 
@@ -322,6 +449,41 @@ export function useOrderDetail(orderId: number | null) {
     enabled: orderId != null,
     queryFn: () => api.get<Order>(`/orders/${orderId}`),
     select: (e) => e.data,
+  });
+}
+
+// ---- Post detail & comments ------------------------------------------------
+
+export function usePost(postId: number) {
+  return useQuery({
+    queryKey: ['post', postId],
+    queryFn: () => api.get<Post>(`/posts/${postId}`),
+    select: (e) => e.data,
+  });
+}
+
+export function useComments(postId: number) {
+  return useQuery({
+    queryKey: ['comments', postId],
+    queryFn: () => api.get<Comment[]>(`/posts/${postId}/comments`),
+    select: (e) => e.data,
+  });
+}
+
+export function useAddComment(postId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { body: string; parentId?: number | null }) =>
+      api.post<Comment>(`/posts/${postId}/comments`, { body: input.body, parent_id: input.parentId ?? undefined }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', postId] }),
+  });
+}
+
+export function useDeleteComment(postId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (commentId: number) => api.del(`/comments/${commentId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', postId] }),
   });
 }
 

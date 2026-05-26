@@ -28,6 +28,11 @@ Route::prefix('v1')->group(function () {
         Route::get('/storage', fn () => response()->json(app(HealthController::class)->storage()));
     });
 
+    /* --------------------------------------------------- Payments (webhook) */
+    // Public: gateways call this server-to-server; authenticity is verified by
+    // signature inside the controller (no user session).
+    Route::post('payments/webhook', [\App\Http\Controllers\Api\V1\PaymentController::class, 'webhook']);
+
     /* ------------------------------------------------------------------ Auth */
     Route::prefix('auth')->group(function () {
         Route::post('register', [AuthController::class, 'register']);
@@ -66,6 +71,10 @@ Route::prefix('v1')->group(function () {
 
         // Media uploads
         Route::post('media', [\App\Http\Controllers\Api\V1\MediaController::class, 'store']);
+
+        // Push notification device tokens
+        Route::post('push-tokens', [\App\Http\Controllers\Api\V1\PushTokenController::class, 'store']);
+        Route::delete('push-tokens', [\App\Http\Controllers\Api\V1\PushTokenController::class, 'destroy']);
 
         // Account & profile
         Route::put('profile', [ProfileController::class, 'update']);
@@ -109,6 +118,9 @@ Route::prefix('v1')->group(function () {
         Route::post('vendors/{vendor}/favorite', [VendorController::class, 'favorite']);
         Route::delete('vendors/{vendor}/favorite', [VendorController::class, 'unfavorite']);
 
+        // Checkout — price the cart (variants/add-ons + voucher) before placing.
+        Route::post('checkout/quote', [\App\Http\Controllers\Api\V1\CheckoutController::class, 'quote']);
+
         // Orders (customers)
         Route::middleware('role:user,admin')->group(function () {
             Route::post('orders', [OrderController::class, 'store']);
@@ -118,6 +130,23 @@ Route::prefix('v1')->group(function () {
         Route::get('orders/{order}', [OrderController::class, 'show']);
         Route::post('orders/{order}/cancel', [OrderController::class, 'cancel']);
         Route::post('orders/{order}/rate', [OrderController::class, 'rate']);
+
+        // Payments — create an intent for an online order, then confirm (mock) /
+        // the gateway calls the public webhook above.
+        Route::post('orders/{order}/pay', [\App\Http\Controllers\Api\V1\PaymentController::class, 'pay']);
+        Route::post('payments/{payment}/confirm', [\App\Http\Controllers\Api\V1\PaymentController::class, 'confirm']);
+
+        // Delivery partner self-service
+        Route::post('delivery/register', [\App\Http\Controllers\Api\V1\DeliveryController::class, 'register']);
+        Route::prefix('delivery')->middleware('role:delivery,admin')->group(function () {
+            Route::get('available', [\App\Http\Controllers\Api\V1\DeliveryController::class, 'available']);
+            Route::get('orders', [\App\Http\Controllers\Api\V1\DeliveryController::class, 'myOrders']);
+            Route::get('stats', [\App\Http\Controllers\Api\V1\DeliveryController::class, 'stats']);
+            Route::post('orders/{order}/accept', [\App\Http\Controllers\Api\V1\DeliveryController::class, 'accept']);
+            Route::post('orders/{order}/release', [\App\Http\Controllers\Api\V1\DeliveryController::class, 'release']);
+            Route::post('orders/{order}/pick-up', [\App\Http\Controllers\Api\V1\DeliveryController::class, 'pickUp']);
+            Route::post('orders/{order}/deliver', [\App\Http\Controllers\Api\V1\DeliveryController::class, 'deliver']);
+        });
 
         // Vendor self-service
         Route::post('vendors/register', [VendorController::class, 'register']);

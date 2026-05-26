@@ -6,7 +6,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { useChatUnread } from "@/lib/hooks/use-chat";
 import { useUnreadCount } from "@/lib/hooks/use-notifications";
 import { useRealtime } from "@/lib/hooks/use-realtime";
-import { Bell, Home, LayoutDashboard, LogOut, MessageCircle, Receipt, Shield, Store, UserRound, UtensilsCrossed } from "lucide-react";
+import { Bell, Bike, Home, LayoutDashboard, LogOut, MessageCircle, Receipt, Shield, Store, UserRound, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ComponentType, ReactNode } from "react";
@@ -29,6 +29,7 @@ const BASE_NAV: NavItem[] = [
 
 const VENDOR_NAV: NavItem = { href: "/vendor", label: "My Store", icon: LayoutDashboard };
 const ADMIN_NAV: NavItem = { href: "/admin", label: "Admin", icon: Shield };
+const DELIVERY_NAV: NavItem = { href: "/delivery", label: "Deliveries", icon: Bike };
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
@@ -59,6 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const NAV: NavItem[] = [
     ...BASE_NAV,
     ...(role === "vendor" ? [VENDOR_NAV] : []),
+    ...(role === "delivery" ? [DELIVERY_NAV] : []),
     ...(role === "admin" || role === "super_admin" ? [ADMIN_NAV] : []),
   ];
 

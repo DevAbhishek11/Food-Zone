@@ -99,6 +99,9 @@ export interface Comment {
   parent_id: number | null;
   body: string;
   author: PostAuthor;
+  likes_count?: number;
+  replies_count?: number;
+  replies?: Comment[];
   created_at: string;
 }
 
@@ -113,6 +116,8 @@ export interface MenuItem {
   allergens: string[];
   is_available: boolean;
   rating_avg: number;
+  variants?: { id: number; name: string; price_modifier: number; is_default: boolean }[];
+  addons?: { id: number; name: string; price: number; is_available: boolean }[];
   images?: string[];
 }
 
@@ -159,6 +164,7 @@ export interface OrderItem {
   quantity: number;
   unit_price: number;
   line_total: number;
+  customizations?: Record<string, unknown> | null;
 }
 
 export interface ChatUser {
@@ -221,6 +227,12 @@ export interface Order {
   total: number;
   payment_method: string;
   payment_status: string;
+  payable?: boolean;
+  delivery_partner_id?: number | null;
+  delivery_partner?: { id: number; name: string; username: string } | null;
+  assigned_at?: string | null;
+  picked_up_at?: string | null;
+  delivery_address?: { label?: string; address?: string; city?: string; state?: string; pincode?: string } | null;
   items?: OrderItem[];
   rating?: { rating: number; review: string | null } | null;
   status_history?: { status: string; note: string | null; at: string }[];

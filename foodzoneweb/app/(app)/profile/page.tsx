@@ -4,10 +4,11 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useUpdateProfile } from "@/lib/hooks/use-profile";
 import { toast } from "@/lib/toast-store";
-import { BadgeCheck, ChevronRight, LogOut, Mail, MapPin } from "lucide-react";
+import { BadgeCheck, Bike, ChevronRight, LogOut, Mail, MapPin } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -17,6 +18,19 @@ export default function ProfilePage() {
   const { user, logout } = useAuth(); // guaranteed non-null
   const updateProfile = useUpdateProfile();
   const [editingAvatar, setEditingAvatar] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  const resendVerification = async () => {
+    setResending(true);
+    try {
+      await api.post("/auth/resend-verification");
+      toast.success("Verification email sent — check your inbox.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not send verification email.");
+    } finally {
+      setResending(false);
+    }
+  };
 
   const stats = [
     { label: "Posts", value: user.profile?.posts_count ?? 0 },
@@ -64,11 +78,20 @@ export default function ProfilePage() {
 
           {user.profile?.bio && <p className="mt-4 text-sm text-content">{user.profile.bio}</p>}
 
-          <div className="mt-4 flex items-center gap-2 text-sm text-muted">
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted">
             <Mail className="h-4 w-4" />
             {user.email}
             {!user.email_verified && (
-              <span className="rounded bg-warning/15 px-1.5 py-0.5 text-xs text-warning">Unverified</span>
+              <>
+                <span className="rounded bg-warning/15 px-1.5 py-0.5 text-xs text-warning">Unverified</span>
+                <button
+                  onClick={resendVerification}
+                  disabled={resending}
+                  className="text-xs font-medium text-brand hover:underline disabled:opacity-60"
+                >
+                  {resending ? "Sending…" : "Resend verification email"}
+                </button>
+              </>
             )}
           </div>
 
@@ -90,6 +113,19 @@ export default function ProfilePage() {
           <span className="flex-1 text-sm font-medium">Delivery addresses</span>
           <ChevronRight className="h-4 w-4 text-muted" />
         </Link>
+
+        {(user.role === "user" || user.role === "delivery") && (
+          <Link
+            href="/delivery"
+            className="flex items-center gap-3 rounded-card border border-line bg-bg-soft p-4 hover:bg-surface"
+          >
+            <Bike className="h-5 w-5 text-muted" />
+            <span className="flex-1 text-sm font-medium">
+              {user.role === "delivery" ? "Delivery dashboard" : "Become a delivery partner"}
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted" />
+          </Link>
+        )}
 
         <Button
           variant="danger"

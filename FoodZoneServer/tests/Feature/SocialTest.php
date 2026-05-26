@@ -80,6 +80,39 @@ class SocialTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_comment_index_returns_replies_nested_under_top_level(): void
+    {
+        $post = Post::factory()->create();
+        Sanctum::actingAs(User::factory()->create());
+
+        $comment = $this->postJson("/api/v1/posts/{$post->id}/comments", ['body' => 'top level'])->json('data.id');
+        $this->postJson("/api/v1/posts/{$post->id}/comments", ['body' => 'a reply', 'parent_id' => $comment])->assertCreated();
+
+        $this->getJson("/api/v1/posts/{$post->id}/comments")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')                       // only the top-level comment
+            ->assertJsonPath('data.0.replies_count', 1)
+            ->assertJsonPath('data.0.replies.0.body', 'a reply');
+    }
+
+    public function test_deleting_a_parent_comment_removes_its_replies(): void
+    {
+        $post = Post::factory()->create();
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $comment = $this->postJson("/api/v1/posts/{$post->id}/comments", ['body' => 'top level'])->json('data.id');
+        $this->postJson("/api/v1/posts/{$post->id}/comments", ['body' => 'reply 1', 'parent_id' => $comment])->assertCreated();
+        $this->postJson("/api/v1/posts/{$post->id}/comments", ['body' => 'reply 2', 'parent_id' => $comment])->assertCreated();
+
+        $this->assertEquals(3, $post->fresh()->comments_count);
+
+        $this->deleteJson("/api/v1/comments/{$comment}")->assertOk();
+
+        $this->assertEquals(0, $post->fresh()->comments_count);
+        $this->assertDatabaseMissing('post_comments', ['parent_id' => $comment]);
+    }
+
     public function test_user_can_follow_and_unfollow(): void
     {
         $me = User::factory()->create();

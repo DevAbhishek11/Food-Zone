@@ -11,11 +11,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { CommentSection } from "./CommentSection";
 
-export function PostCard({ post }: { post: Post }) {
+export function PostCard({ post, defaultShowComments = false }: { post: Post; defaultShowComments?: boolean }) {
   const [liked, setLiked] = useState(post.liked_by_me);
   const [likes, setLikes] = useState(post.likes_count);
   const [comments, setComments] = useState(post.comments_count);
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(defaultShowComments);
   const [busy, setBusy] = useState(false);
 
   const toggleLike = async () => {
@@ -51,7 +51,10 @@ export function PostCard({ post }: { post: Post }) {
             {post.author.name}
           </Link>
           <p className="truncate text-xs text-muted">
-            @{post.author.username} · {timeAgo(post.created_at)}
+            @{post.author.username} ·{" "}
+            <Link href={`/posts/${post.id}`} className="hover:underline">
+              {timeAgo(post.created_at)}
+            </Link>
             {post.privacy !== "public" && ` · ${post.privacy}`}
           </p>
         </div>
@@ -90,7 +93,11 @@ export function PostCard({ post }: { post: Post }) {
       </footer>
 
       {showComments && (
-        <CommentSection postId={post.id} onCommentAdded={() => setComments((n) => n + 1)} />
+        <CommentSection
+          postId={post.id}
+          onCommentAdded={() => setComments((n) => n + 1)}
+          onCommentRemoved={(n) => setComments((c) => Math.max(0, c - n))}
+        />
       )}
     </article>
   );

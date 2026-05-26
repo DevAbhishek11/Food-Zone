@@ -76,6 +76,17 @@ class User extends Authenticatable
         return $this->hasMany(Order::class);
     }
 
+    /** Orders this user is delivering (delivery-role users). */
+    public function deliveries(): HasMany
+    {
+        return $this->hasMany(Order::class, 'delivery_partner_id');
+    }
+
+    public function pushTokens(): HasMany
+    {
+        return $this->hasMany(PushToken::class);
+    }
+
     public function posts(): HasMany
     {
         return $this->hasMany(Post::class);
