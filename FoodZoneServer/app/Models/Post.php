@@ -63,6 +63,16 @@ class Post extends Model
         return $this->belongsTo(Post::class, 'shared_post_id');
     }
 
+    public function savedBy(): HasMany
+    {
+        return $this->hasMany(SavedPost::class);
+    }
+
+    public function shares(): HasMany
+    {
+        return $this->hasMany(PostShare::class);
+    }
+
     public function isLikedBy(int $userId): bool
     {
         return $this->likes()->where('user_id', $userId)->exists();

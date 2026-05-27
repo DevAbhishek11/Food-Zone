@@ -19,7 +19,7 @@ interface NavItem {
 }
 
 const BASE_NAV: NavItem[] = [
-  { href: "/", label: "Feed", icon: Home },
+  { href: "/feed", label: "Feed", icon: Home },
   { href: "/vendors", label: "Order Food", icon: Store },
   { href: "/messages", label: "Messages", icon: MessageCircle, badgeKey: "chat" },
   { href: "/notifications", label: "Inbox", icon: Bell, badgeKey: "notif" },
@@ -32,7 +32,6 @@ const ADMIN_NAV: NavItem = { href: "/admin", label: "Admin", icon: Shield };
 const DELIVERY_NAV: NavItem = { href: "/delivery", label: "Deliveries", icon: Bike };
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(href + "/");
 }
 
@@ -73,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh">
       {/* Sidebar (desktop) */}
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-bg-soft p-4 md:flex">
-        <Link href="/" className="mb-8 flex items-center gap-2 px-2">
+        <Link href="/feed" className="mb-8 flex items-center gap-2 px-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand">
             <UtensilsCrossed className="h-5 w-5 text-white" />
           </span>

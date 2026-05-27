@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AddressController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CommentController;
+use App\Http\Controllers\Api\V1\HashtagController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MenuCategoryController;
 use App\Http\Controllers\Api\V1\MenuItemController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Api\V1\PostController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SearchController;
+use App\Http\Controllers\Api\V1\StoryController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\VendorController;
 use Illuminate\Support\Facades\Route;
@@ -55,8 +57,16 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::middleware('auth.optional')->group(function () {
         Route::get('search', [SearchController::class, 'index']);
         Route::get('explore', [PostController::class, 'explore']);
+
+        // Discovery (registered before posts/{post} so "trending" isn't treated as an id).
+        Route::get('posts/trending', [PostController::class, 'trending']);
+        Route::get('hashtags/trending', [HashtagController::class, 'trending']);
+        Route::get('hashtags/{tag}/posts', [HashtagController::class, 'posts']);
+
         Route::get('posts/{post}', [PostController::class, 'show']);
         Route::get('posts/{post}/comments', [CommentController::class, 'index']);
+        Route::get('posts/{post}/liked-by', [PostController::class, 'likedBy']);
+        Route::get('posts/{post}/shares', [PostController::class, 'shares']);
 
         Route::get('vendors', [VendorController::class, 'index']);
         Route::get('vendors/{idOrSlug}', [VendorController::class, 'show']);
@@ -86,13 +96,25 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
 
         // Social — feed & posts
         Route::get('feed', [PostController::class, 'feed']);
+        Route::get('feed/suggested', [PostController::class, 'suggested']);
+        Route::get('saved', [PostController::class, 'saved']);
         Route::post('posts', [PostController::class, 'store']);
         Route::put('posts/{post}', [PostController::class, 'update']);
         Route::delete('posts/{post}', [PostController::class, 'destroy']);
         Route::post('posts/{post}/like', [PostController::class, 'like']);
         Route::delete('posts/{post}/like', [PostController::class, 'unlike']);
+        Route::post('posts/{post}/save', [PostController::class, 'save']);
+        Route::delete('posts/{post}/save', [PostController::class, 'unsave']);
+        Route::post('posts/{post}/share', [PostController::class, 'share']);
         Route::post('posts/{post}/comments', [CommentController::class, 'store']);
         Route::delete('comments/{comment}', [CommentController::class, 'destroy']);
+
+        // Stories
+        Route::get('stories', [StoryController::class, 'index']);
+        Route::post('stories', [StoryController::class, 'store']);
+        Route::delete('stories/{story}', [StoryController::class, 'destroy']);
+        Route::post('stories/{story}/view', [StoryController::class, 'view']);
+        Route::get('stories/{story}/views', [StoryController::class, 'views']);
 
         // Follow graph
         Route::post('users/{user}/follow', [UserController::class, 'follow']);

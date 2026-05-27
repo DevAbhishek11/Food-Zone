@@ -2,7 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { api } from './api';
 import { useAuthStore } from './auth-store';
-import type { Address, ApiEnvelope, AppNotification, Comment, Conversation, Message, OperatingHour, Order, Post, Review, User, Vendor, VendorMenu } from './types';
+import type { Address, ApiEnvelope, AppNotification, Comment, Conversation, Message, OperatingHour, Order, Post, Review, Story, StoryGroup, User, Vendor, VendorMenu } from './types';
 
 export interface AddressInput {
   label?: string;
@@ -484,6 +484,48 @@ export function useDeleteComment(postId: number) {
   return useMutation({
     mutationFn: (commentId: number) => api.del(`/comments/${commentId}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', postId] }),
+  });
+}
+
+// ---- Feed engagement: save, share, stories ---------------------------------
+
+export function useToggleSave() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ postId, saved }: { postId: number; saved: boolean }) =>
+      saved ? api.del(`/posts/${postId}/save`) : api.post(`/posts/${postId}/save`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['saved'] }),
+  });
+}
+
+export function useSharePost() {
+  return useMutation({
+    mutationFn: (postId: number) => api.post<{ shares_count: number }>(`/posts/${postId}/share`),
+  });
+}
+
+export function useStories() {
+  return useQuery({
+    queryKey: ['stories'],
+    queryFn: () => api.get<StoryGroup[]>('/stories'),
+    select: (e) => e.data,
+  });
+}
+
+export function useCreateStory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { media_url: string; type?: 'image' | 'video'; caption?: string }) =>
+      api.post<Story>('/stories', input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stories'] }),
+  });
+}
+
+export function useViewStory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (storyId: number) => api.post(`/stories/${storyId}/view`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stories'] }),
   });
 }
 

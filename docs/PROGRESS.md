@@ -5,7 +5,25 @@ delivered across all relevant tiers and verified (`php artisan test` / web `buil
 / mobile `tsc`+`expo lint`+`expo export`). Per-phase detail lives in `WORKPHASE-N.md`;
 the index is `WORKPHASES.md`.
 
-_Last updated: 2026-05-26 · Backend tests: **133** · Mobile routes: **27** · Production roadmap: [ROADMAP.md](ROADMAP.md) — **complete (P12→P24)**_
+_Last updated: 2026-05-27 · Backend tests: **146** · Mobile routes: **27** · Web pages: **31** · Roadmaps: [ROADMAP.md](ROADMAP.md) (P12→P24 ✅) + **v3.0 enhancement (P25→P36, in progress)**_
+
+### v3.0 enhancement roadmap (P25–P36, from `27May2026Prompt.md`)
+- [x] **P25 — Landing page + role-separated auth**: public `/` marketing landing (hero/features/
+  how-it-works/animated stats/trending/app/vendor-CTA/footer); feed moved to `/feed`;
+  `redirectAfterLogin(role)`; multi-step `/register`; `/vendor/login`, `/vendor/register`,
+  `/admin/login`. _(Web)_
+- [x] **P26 — Design system overhaul**: full `@theme` token set (neutral-zinc palette, gradients,
+  shadows, radii, motion) with old names kept as aliases; Button (outline/xs-xl/icons/gradient),
+  new Card + Badge, Avatar (ring/online/verified/gradient initials), Input password toggle;
+  mobile `theme.ts` palette + `Shadows`/`Radii`. _(Web + Mobile)_
+- [x] **P27 — Feed & post experience**: saved/share/liked-by/trending/suggested + hashtags + stories
+  (4 new tables, 13 tests); web StoryBar+viewer, PostCard save/share/hashtag-links, TrendingSidebar,
+  `/hashtag/[tag]`; mobile FlashList feed + story bar + double-tap-like/haptics + save. Polls deferred.
+  _(Backend + Web + Mobile)_
+- [ ] P28 profile · P29 chat v2 · P30 vendor store ·
+  P31 vendor dash v3 · P32 admin v3 · P33 explore · P34 notifications/onboarding ·
+  P35 performance · P36 advanced features. _(+ deferred: post polls)_
+
 
 ---
 

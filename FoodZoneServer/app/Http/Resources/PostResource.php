@@ -31,6 +31,9 @@ class PostResource extends JsonResource
                 : false,
             'tagged_vendor_id' => $this->tagged_vendor_id,
             'tagged_item_id' => $this->tagged_item_id,
+            'is_saved' => (bool) ($this->is_saved ?? false),
+            // 'following' | 'suggested' | 'sponsored' — set by feed endpoints.
+            'source' => $this->source ?? null,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

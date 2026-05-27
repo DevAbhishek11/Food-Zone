@@ -32,7 +32,9 @@
       "Bash(grep -nE \"useComments|useAddComment|useDeleteComment|usePost\\\\b|useOrderDetail|'comments'|posts/\\\\$\" src/lib/hooks.ts)",
       "WebFetch(domain:docs.expo.dev)",
       "Read(//e/e/Project/FoodZoneServer/bootstrap/**)",
-      "Read(//e/e/Project/FoodZoneServer/app/Http/**)"
+      "Read(//e/e/Project/FoodZoneServer/app/Http/**)",
+      "Bash(grep -iE \"error|Compiled|/$|/feed|/vendor/login|/vendor/register|/admin/login|/register|/login\")",
+      "Bash(grep -iE \"^.{0,4}\\(○|ƒ|●\\).*\\(/$|/feed|/login|/register|/vendor|/admin\\)\")"
     ]
   }
 }

@@ -59,7 +59,7 @@ export default function UserProfilePage() {
       <PageHeader
         title={`@${user.username}`}
         action={
-          <Link href="/" className="flex items-center gap-1 text-sm text-muted hover:text-content">
+          <Link href="/feed" className="flex items-center gap-1 text-sm text-muted hover:text-content">
             <ArrowLeft className="h-4 w-4" /> Feed
           </Link>
         }

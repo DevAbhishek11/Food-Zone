@@ -6,8 +6,13 @@ use App\Enums\PostPrivacy;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePostRequest;
 use App\Http\Resources\PostResource;
+use App\Http\Resources\UserSummaryResource;
 use App\Models\Post;
 use App\Models\PostMedia;
+use App\Models\PostShare;
+use App\Models\SavedPost;
+use App\Models\User;
+use App\Services\NotificationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +29,7 @@ class PostController extends Controller
 
         $posts = Post::query()
             ->with(['user.profile', 'media', 'likes' => fn ($q) => $q->where('user_id', $me->id)])
+            ->withExists(['savedBy as is_saved' => fn ($q) => $q->where('user_id', $me->id)])
             ->whereNotIn('user_id', $blocked)
             ->where(function ($q) use ($followingIds, $me) {
                 // Visibility: public to all; followers-only to followers/self; private to self.
@@ -36,6 +42,12 @@ class PostController extends Controller
             })
             ->latest()
             ->paginate(15);
+
+        // Label provenance so clients can badge "Suggested" vs followed content.
+        $followingSet = array_flip($followingIds);
+        $posts->getCollection()->each(function ($p) use ($followingSet, $me) {
+            $p->source = ($p->user_id === $me->id || isset($followingSet[$p->user_id])) ? 'following' : 'suggested';
+        });
 
         return ApiResponse::paginated($posts, PostResource::class, 'Feed loaded.');
     }
@@ -57,6 +69,9 @@ class PostController extends Controller
         $this->assertCanView($request, $post);
 
         $post->load(['user.profile', 'media']);
+        if ($me = $request->user()) {
+            $post->setAttribute('is_saved', $post->savedBy()->where('user_id', $me->id)->exists());
+        }
 
         return ApiResponse::success(new PostResource($post), 'Post retrieved.');
     }
@@ -150,6 +165,117 @@ class PostController extends Controller
         }
 
         return ApiResponse::success(['likes_count' => $post->fresh()->likes_count], 'Post unliked.');
+    }
+
+    /** Posts from people you don't follow yet, ranked by engagement. */
+    public function suggested(Request $request): JsonResponse
+    {
+        $me = $request->user();
+        $exclude = array_merge(
+            $me->following()->where('status', 'accepted')->pluck('following_id')->all(),
+            [$me->id],
+            $me->blockedUserIds(),
+        );
+
+        $posts = Post::query()
+            ->where('privacy', PostPrivacy::Public->value)
+            ->whereNotIn('user_id', $exclude)
+            ->with(['user.profile', 'media', 'likes' => fn ($q) => $q->where('user_id', $me->id)])
+            ->withExists(['savedBy as is_saved' => fn ($q) => $q->where('user_id', $me->id)])
+            ->orderByRaw('(likes_count + comments_count * 2 + shares_count * 3) DESC')
+            ->latest()
+            ->paginate(15);
+
+        $posts->getCollection()->each(fn ($p) => $p->source = 'suggested');
+
+        return ApiResponse::paginated($posts, PostResource::class, 'Suggested posts loaded.');
+    }
+
+    /** Most-engaged public posts in the last N hours. */
+    public function trending(Request $request): JsonResponse
+    {
+        $hours = min(max((int) $request->query('hours', 6), 1), 168);
+        $me = $request->user();
+
+        $posts = Post::query()
+            ->where('privacy', PostPrivacy::Public->value)
+            ->where('created_at', '>=', now()->subHours($hours))
+            ->with(['user.profile', 'media'])
+            ->when($me, fn ($q) => $q
+                ->with(['likes' => fn ($l) => $l->where('user_id', $me->id)])
+                ->withExists(['savedBy as is_saved' => fn ($s) => $s->where('user_id', $me->id)]))
+            ->orderByRaw('(likes_count + comments_count * 2 + shares_count * 3) DESC')
+            ->latest()
+            ->paginate(15);
+
+        return ApiResponse::paginated($posts, PostResource::class, 'Trending posts loaded.');
+    }
+
+    /** Bookmark a post. */
+    public function save(Request $request, Post $post): JsonResponse
+    {
+        SavedPost::firstOrCreate(['user_id' => $request->user()->id, 'post_id' => $post->id]);
+
+        return ApiResponse::success(null, 'Post saved.', 201);
+    }
+
+    public function unsave(Request $request, Post $post): JsonResponse
+    {
+        SavedPost::where('user_id', $request->user()->id)->where('post_id', $post->id)->delete();
+
+        return ApiResponse::success(null, 'Post removed from saved.');
+    }
+
+    /** The current user's bookmarked posts. */
+    public function saved(Request $request): JsonResponse
+    {
+        $me = $request->user();
+
+        $posts = Post::query()
+            ->whereIn('id', SavedPost::where('user_id', $me->id)->select('post_id'))
+            ->with(['user.profile', 'media', 'likes' => fn ($q) => $q->where('user_id', $me->id)])
+            ->withExists(['savedBy as is_saved' => fn ($q) => $q->where('user_id', $me->id)])
+            ->latest()
+            ->paginate(15);
+
+        return ApiResponse::paginated($posts, PostResource::class, 'Saved posts loaded.');
+    }
+
+    /** Record a share (idempotent per user) and bump the counter. */
+    public function share(Request $request, Post $post): JsonResponse
+    {
+        $me = $request->user();
+        $share = PostShare::firstOrCreate(['user_id' => $me->id, 'post_id' => $post->id]);
+
+        if ($share->wasRecentlyCreated) {
+            $post->increment('shares_count');
+            if ($post->user_id !== $me->id) {
+                app(NotificationService::class)->notify(
+                    $post->user_id,
+                    'share',
+                    'Post shared',
+                    "{$me->username} shared your post.",
+                    ['post_id' => $post->id],
+                    actor: $me,
+                );
+            }
+        }
+
+        return ApiResponse::success(['shares_count' => $post->fresh()->shares_count], 'Post shared.');
+    }
+
+    public function shares(Post $post): JsonResponse
+    {
+        $users = User::whereIn('id', $post->shares()->select('user_id'))->with('profile')->paginate(20);
+
+        return ApiResponse::paginated($users, UserSummaryResource::class, 'Shares loaded.');
+    }
+
+    public function likedBy(Post $post): JsonResponse
+    {
+        $users = User::whereIn('id', $post->likes()->select('user_id'))->with('profile')->paginate(20);
+
+        return ApiResponse::paginated($users, UserSummaryResource::class, 'Likers loaded.');
     }
 
     // ----------------------------------------------------------------

@@ -90,7 +90,27 @@ export interface Post {
   comments_count: number;
   shares_count: number;
   liked_by_me: boolean;
+  is_saved?: boolean;
+  source?: 'following' | 'suggested' | 'sponsored' | null;
   created_at: string;
+}
+
+export interface Story {
+  id: number;
+  user_id: number;
+  media_url: string;
+  type: 'image' | 'video';
+  caption: string | null;
+  author?: PostAuthor;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface StoryGroup {
+  user: PostAuthor;
+  is_mine: boolean;
+  has_unseen: boolean;
+  stories: Story[];
 }
 
 export interface Comment {

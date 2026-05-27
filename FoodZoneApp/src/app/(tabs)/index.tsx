@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
+import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, RefreshControl, Text, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PostCard } from '@/components/post-card';
+import { StoryBar } from '@/components/story-bar';
 import { Button, EmptyView, ErrorView, Loading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -59,16 +61,21 @@ export default function FeedScreen() {
       ) : isError ? (
         <ErrorView message="Couldn't load your feed." onRetry={refetch} />
       ) : (
-        <FlatList
+        <FlashList
           data={posts}
           keyExtractor={(p) => String(p.id)}
-          contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }}
+          contentContainerStyle={{ padding: Spacing.three }}
+          ItemSeparatorComponent={() => <View style={{ height: Spacing.three }} />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.brand} />}
           onEndReached={() => hasNextPage && fetchNextPage()}
           onEndReachedThreshold={0.5}
           renderItem={({ item }) => <PostCard post={item} />}
           ListHeaderComponent={
-            <View style={{ backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: Spacing.three, gap: Spacing.two, marginBottom: Spacing.three }}>
+            <View style={{ gap: Spacing.three, marginBottom: Spacing.three }}>
+              <View style={{ marginHorizontal: -Spacing.three }}>
+                <StoryBar />
+              </View>
+              <View style={{ backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: Spacing.three, gap: Spacing.two }}>
               <TextInput
                 value={body}
                 onChangeText={setBody}
@@ -91,6 +98,7 @@ export default function FeedScreen() {
                   <Text style={{ color: c.brand, fontWeight: '600' }}>{uploading ? 'Uploading…' : 'Photo'}</Text>
                 </Pressable>
                 <Button title="Post" onPress={submit} loading={createPost.isPending} disabled={!body.trim() && !image} />
+              </View>
               </View>
             </View>
           }

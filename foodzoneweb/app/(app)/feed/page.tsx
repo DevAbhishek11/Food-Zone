@@ -2,6 +2,8 @@
 
 import { PostCard } from "@/components/feed/PostCard";
 import { PostComposer } from "@/components/feed/PostComposer";
+import { StoryBar } from "@/components/feed/StoryBar";
+import { TrendingSidebar } from "@/components/feed/TrendingSidebar";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/ui/States";
@@ -26,8 +28,10 @@ export default function FeedPage() {
         }
       />
 
-      <div className="mx-auto w-full max-w-2xl space-y-4 p-4">
-        <PostComposer />
+      <div className="mx-auto flex w-full max-w-5xl justify-center gap-6 p-4">
+        <div className="w-full max-w-2xl space-y-4">
+          <StoryBar />
+          <PostComposer />
 
         {isLoading ? (
           <>
@@ -55,6 +59,9 @@ export default function FeedPage() {
             )}
           </>
         )}
+        </div>
+
+        <TrendingSidebar />
       </div>
     </>
   );

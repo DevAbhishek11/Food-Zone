@@ -18,7 +18,7 @@ export default function PostDetailPage() {
     <>
       <PageHeader title="Post" />
       <div className="mx-auto w-full max-w-2xl space-y-4 p-4">
-        <Link href="/" className="inline-flex items-center gap-1 text-sm text-muted hover:text-content">
+        <Link href="/feed" className="inline-flex items-center gap-1 text-sm text-muted hover:text-content">
           <ArrowLeft className="h-4 w-4" /> Back to feed
         </Link>
 

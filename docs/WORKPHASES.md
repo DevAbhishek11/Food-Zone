@@ -38,6 +38,13 @@ The full product spec lives in `FoodZone_PROJECT.md`. The API contract is in `Fo
 | 22 | [Order timeline + post detail (threaded comments)](WORKPHASE-22.md) | Backend + Web + Mobile | ✅ Done |
 | 23 | [Push notifications + email-verification UX](WORKPHASE-23.md) | Backend + Web + Mobile | ✅ Done |
 | 24 | [Production hardening](WORKPHASE-24.md) | Backend + Web | ✅ Done |
+| 25 | [Public landing page + role-separated auth](WORKPHASE-25.md) | Web | ✅ Done |
+| 26 | [Design system overhaul](WORKPHASE-26.md) | Web + Mobile | ✅ Done |
+| 27 | [Feed & post experience (stories/saved/share/hashtags)](WORKPHASE-27.md) | Backend + Web + Mobile | ✅ Done |
+
+> 🚀 **v3.0 enhancement roadmap (P25–P36)** — `27May2026Prompt.md`: landing/auth,
+> design-system overhaul, feed/profile/chat/vendor/admin/explore upgrades,
+> notifications/onboarding, performance, advanced features. P25–P27 done.
 
 > 📋 Live completed/pending work tracker: **[PROGRESS.md](PROGRESS.md)**.
 > 🗺️ Production-grade roadmap (P12→P24): **[ROADMAP.md](ROADMAP.md)**.
@@ -71,7 +78,7 @@ Seeded logins (password `password`): `admin@foodzone.app`, `alice@example.com`.
 
 | Tier | Command | Result |
 |---|---|---|
-| Backend | `php artisan test` | **133 passing** |
-| Web | `npm run build` + `npm run lint` | clean |
+| Backend | `php artisan test` | **146 passing** |
+| Web | `npm run build` + `npm run lint` | clean (**31 pages**) |
 | Mobile | `npx tsc --noEmit` + `npx expo lint` + `npx expo export` | clean (27 routes, iOS+Android+web) |
 | CI | `.github/workflows/ci.yml` | backend + web + mobile jobs |

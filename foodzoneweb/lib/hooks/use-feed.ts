@@ -27,3 +27,29 @@ export function useCreatePost() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["feed"] }),
   });
 }
+
+/** Toggle bookmark on a post (no global refetch — callers update locally). */
+export function useToggleSave() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ postId, saved }: { postId: number; saved: boolean }) =>
+      saved ? api.del(`/posts/${postId}/save`) : api.post(`/posts/${postId}/save`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["saved"] }),
+  });
+}
+
+export function useSharePost() {
+  return useMutation({
+    mutationFn: (postId: number) => api.post<{ shares_count: number }>(`/posts/${postId}/share`),
+  });
+}
+
+export function useSaved() {
+  return useInfiniteQuery({
+    queryKey: ["saved"],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<Post[]>("/saved", { query: { page: pageParam } }),
+    getNextPageParam: (last: ApiEnvelope<Post[]>) =>
+      last.meta?.has_more ? last.meta.current_page + 1 : undefined,
+  });
+}
