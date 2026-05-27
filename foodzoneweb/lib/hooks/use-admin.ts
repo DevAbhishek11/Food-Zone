@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from "@/lib/api";
-import type { ApiEnvelope, Order, User, Vendor } from "@/lib/types";
+import type { ApiEnvelope, AuditLog, Order, User, Vendor } from "@/lib/types";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface AdminAnalytics {
@@ -49,6 +49,15 @@ export function useAdminUsers(filters: UserFilters) {
     initialPageParam: 1,
     queryFn: ({ pageParam }) => api.get<User[]>("/admin/users", { query: { ...filters, page: pageParam } }),
     getNextPageParam: (last: ApiEnvelope<User[]>) => (last.meta?.has_more ? last.meta.current_page + 1 : undefined),
+  });
+}
+
+export function useAuditLogs(action?: string) {
+  return useInfiniteQuery({
+    queryKey: ["admin-audit", action],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api.get<AuditLog[]>("/admin/audit-logs", { query: { action, page: pageParam } }),
+    getNextPageParam: (last: ApiEnvelope<AuditLog[]>) => (last.meta?.has_more ? last.meta.current_page + 1 : undefined),
   });
 }
 

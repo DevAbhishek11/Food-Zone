@@ -7,13 +7,16 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Enums\VendorStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AuditLogResource;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\VendorResource;
+use App\Models\AuditLog;
 use App\Models\Order;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Services\AuditService;
 use App\Services\NotificationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -24,7 +27,23 @@ use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
-    public function __construct(private NotificationService $notifications) {}
+    public function __construct(
+        private NotificationService $notifications,
+        private AuditService $audit,
+    ) {}
+
+    /** Immutable audit trail of moderation/admin actions. */
+    public function auditLogs(Request $request): JsonResponse
+    {
+        $logs = AuditLog::query()
+            ->when($request->filled('action'), fn ($q) => $q->where('action', $request->string('action')))
+            ->when($request->filled('user_id'), fn ($q) => $q->where('user_id', (int) $request->input('user_id')))
+            ->with('user')
+            ->latest()
+            ->paginate(30);
+
+        return ApiResponse::paginated($logs, AuditLogResource::class, 'Audit logs loaded.');
+    }
 
     public function dashboard(): JsonResponse
     {
@@ -149,6 +168,7 @@ class AdminController extends Controller
             if ($data['action'] !== 'unban') {
                 $user->tokens()->delete();
             }
+            $this->audit->log($request->user(), "user.{$data['action']}", $user, ['bulk' => true]);
         }
 
         return ApiResponse::success(['affected' => $targets->count()], 'Bulk action applied.');
@@ -184,6 +204,7 @@ class AdminController extends Controller
         $user->tokens()->delete();
         $this->notifications->notify($user->id, 'system', 'Account banned',
             $reason ?? 'Your account has been permanently banned for policy violations.');
+        $this->audit->log($request->user(), 'user.banned', $user, ['reason' => $reason]);
 
         return ApiResponse::success(new UserResource($user->fresh()), 'User banned.');
     }
@@ -207,11 +228,12 @@ class AdminController extends Controller
         $user->tokens()->delete();
         $this->notifications->notify($user->id, 'system', 'Account suspended',
             ($data['reason'] ?? 'Your account has been suspended.')." Until {$until->toDateString()}.");
+        $this->audit->log($request->user(), 'user.suspended', $user, ['days' => $data['days'], 'reason' => $data['reason'] ?? null]);
 
         return ApiResponse::success(new UserResource($user->fresh()), "User suspended for {$data['days']} days.");
     }
 
-    public function unbanUser(User $user): JsonResponse
+    public function unbanUser(Request $request, User $user): JsonResponse
     {
         $user->forceFill([
             'status' => UserStatus::Active->value,
@@ -219,6 +241,7 @@ class AdminController extends Controller
         ])->save();
         $this->notifications->notify($user->id, 'system', 'Account reinstated',
             'Your account has been reinstated. Welcome back.');
+        $this->audit->log($request->user(), 'user.reinstated', $user);
 
         return ApiResponse::success(new UserResource($user->fresh()), 'User reinstated.');
     }
@@ -234,7 +257,7 @@ class AdminController extends Controller
         return ApiResponse::paginated($vendors, VendorResource::class, 'Vendors loaded.');
     }
 
-    public function approveVendor(Vendor $vendor): JsonResponse
+    public function approveVendor(Request $request, Vendor $vendor): JsonResponse
     {
         if ($vendor->status === VendorStatus::Approved) {
             return ApiResponse::error('Vendor is already approved.', 422);
@@ -248,6 +271,7 @@ class AdminController extends Controller
         $vendor->user->forceFill(['role' => UserRole::Vendor->value])->save();
         $this->notifications->notify($vendor->user_id, 'system', 'Vendor approved',
             "Congratulations! Your store \"{$vendor->name}\" has been approved.");
+        $this->audit->log($request->user(), 'vendor.approved', $vendor, ['name' => $vendor->name]);
 
         return ApiResponse::success(new VendorResource($vendor->fresh()), 'Vendor approved.');
     }
@@ -261,6 +285,7 @@ class AdminController extends Controller
             'rejection_reason' => $reason,
         ]);
         $this->notifications->notify($vendor->user_id, 'system', 'Vendor application rejected', $reason);
+        $this->audit->log($request->user(), 'vendor.rejected', $vendor, ['reason' => $reason]);
 
         return ApiResponse::success(new VendorResource($vendor->fresh()), 'Vendor rejected.');
     }

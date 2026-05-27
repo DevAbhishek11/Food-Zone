@@ -37,6 +37,7 @@ The full product spec lives in `FoodZone_PROJECT.md`. The API contract is in `Fo
 | 21 | [Delivery partner flow](WORKPHASE-21.md) | Backend + Web + Mobile | ✅ Done |
 | 22 | [Order timeline + post detail (threaded comments)](WORKPHASE-22.md) | Backend + Web + Mobile | ✅ Done |
 | 23 | [Push notifications + email-verification UX](WORKPHASE-23.md) | Backend + Web + Mobile | ✅ Done |
+| 24 | [Production hardening](WORKPHASE-24.md) | Backend + Web | ✅ Done |
 
 > 📋 Live completed/pending work tracker: **[PROGRESS.md](PROGRESS.md)**.
 > 🗺️ Production-grade roadmap (P12→P24): **[ROADMAP.md](ROADMAP.md)**.
@@ -70,6 +71,7 @@ Seeded logins (password `password`): `admin@foodzone.app`, `alice@example.com`.
 
 | Tier | Command | Result |
 |---|---|---|
-| Backend | `php artisan test` | **130 passing** |
+| Backend | `php artisan test` | **133 passing** |
 | Web | `npm run build` + `npm run lint` | clean |
 | Mobile | `npx tsc --noEmit` + `npx expo lint` + `npx expo export` | clean (27 routes, iOS+Android+web) |
+| CI | `.github/workflows/ci.yml` | backend + web + mobile jobs |

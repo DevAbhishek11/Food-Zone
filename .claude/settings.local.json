@@ -30,7 +30,9 @@
       "Read(//e/e/Project/foodzoneweb/**)",
       "Bash(grep -E \"\\\\.tsx$\")",
       "Bash(grep -nE \"useComments|useAddComment|useDeleteComment|usePost\\\\b|useOrderDetail|'comments'|posts/\\\\$\" src/lib/hooks.ts)",
-      "WebFetch(domain:docs.expo.dev)"
+      "WebFetch(domain:docs.expo.dev)",
+      "Read(//e/e/Project/FoodZoneServer/bootstrap/**)",
+      "Read(//e/e/Project/FoodZoneServer/app/Http/**)"
     ]
   }
 }

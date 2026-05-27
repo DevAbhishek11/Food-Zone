@@ -17,7 +17,7 @@ use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\VendorController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v1')->group(function () {
+Route::prefix('v1')->middleware('throttle:api')->group(function () {
 
     /* ---------------------------------------------------------------- Health */
     Route::prefix('health')->group(function () {
@@ -35,11 +35,14 @@ Route::prefix('v1')->group(function () {
 
     /* ------------------------------------------------------------------ Auth */
     Route::prefix('auth')->group(function () {
-        Route::post('register', [AuthController::class, 'register']);
-        Route::post('login', [AuthController::class, 'login']);
-        Route::post('verify-email', [AuthController::class, 'verifyEmail']);
-        Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
-        Route::post('reset-password', [AuthController::class, 'resetPassword']);
+        // Stricter per-IP throttle on unauthenticated credential endpoints.
+        Route::middleware('throttle:auth')->group(function () {
+            Route::post('register', [AuthController::class, 'register']);
+            Route::post('login', [AuthController::class, 'login']);
+            Route::post('verify-email', [AuthController::class, 'verifyEmail']);
+            Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+            Route::post('reset-password', [AuthController::class, 'resetPassword']);
+        });
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
@@ -171,6 +174,7 @@ Route::prefix('v1')->group(function () {
         Route::prefix('admin')->middleware('role:admin')->group(function () {
             Route::get('dashboard', [AdminController::class, 'dashboard']);
             Route::get('analytics', [AdminController::class, 'analytics']);
+            Route::get('audit-logs', [AdminController::class, 'auditLogs']);
             Route::get('orders', [AdminController::class, 'orders']);
             Route::post('users/bulk', [AdminController::class, 'bulkUsers']);
             Route::get('users', [AdminController::class, 'users']);

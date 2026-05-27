@@ -6,7 +6,10 @@ use App\Contracts\PaymentGateway;
 use App\Services\Payments\MockPaymentGateway;
 use App\Services\Payments\RazorpayPaymentGateway;
 use App\Services\Payments\StripePaymentGateway;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -34,5 +37,32 @@ class AppServiceProvider extends ServiceProvider
         // session) and load the private-channel authorization callbacks.
         Broadcast::routes(['middleware' => ['auth:sanctum']]);
         require base_path('routes/channels.php');
+
+        $this->configureRateLimiting();
+    }
+
+    /**
+     * Named rate limiters used by the `throttle:` middleware. Disabled when
+     * config('hardening.rate_limit') is false (the test suite) so functional
+     * tests aren't throttled.
+     */
+    private function configureRateLimiting(): void
+    {
+        RateLimiter::for('api', function (Request $request) {
+            if (! config('hardening.rate_limit', true)) {
+                return Limit::none();
+            }
+
+            return Limit::perMinute((int) config('hardening.api_per_minute', 120))
+                ->by($request->user()?->id ? 'u'.$request->user()->id : 'ip'.$request->ip());
+        });
+
+        RateLimiter::for('auth', function (Request $request) {
+            if (! config('hardening.rate_limit', true)) {
+                return Limit::none();
+            }
+
+            return Limit::perMinute((int) config('hardening.auth_per_minute', 20))->by('auth'.$request->ip());
+        });
     }
 }

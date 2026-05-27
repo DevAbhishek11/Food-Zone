@@ -5,7 +5,7 @@ delivered across all relevant tiers and verified (`php artisan test` / web `buil
 / mobile `tsc`+`expo lint`+`expo export`). Per-phase detail lives in `WORKPHASE-N.md`;
 the index is `WORKPHASES.md`.
 
-_Last updated: 2026-05-26 · Backend tests: **130** · Mobile routes: **27** · Production roadmap: [ROADMAP.md](ROADMAP.md)_
+_Last updated: 2026-05-26 · Backend tests: **133** · Mobile routes: **27** · Production roadmap: [ROADMAP.md](ROADMAP.md) — **complete (P12→P24)**_
 
 ---
 
@@ -72,6 +72,10 @@ _Last updated: 2026-05-26 · Backend tests: **130** · Mobile routes: **27** · 
 - [x] **P23 — Push + email-verification UX**: `push_tokens` + register/unregister + `SendPushNotification`
   (Expo, env-gated, dispatched from `NotificationService`); mobile `expo-notifications` registration
   (guarded); web `/verify-email` page + resend; mobile resend on profile. _(Backend + Web + Mobile)_
+- [x] **P24 — Production hardening**: `SecurityHeaders` middleware; config-gated API/auth rate
+  limiting; immutable `audit_logs` + `AuditService` wired into all admin moderation +
+  `GET /admin/audit-logs` + web `/admin/audit` viewer; GitHub Actions CI (backend/web/mobile);
+  +3 tests. _(Backend + Web)_
 
 ---
 
@@ -80,9 +84,7 @@ _Last updated: 2026-05-26 · Backend tests: **130** · Mobile routes: **27** · 
 Ordered roughly by value. Each would follow the same convention (next phase number,
 all tiers, tests, a `WORKPHASE-N.md`).
 
-### Next up (per [ROADMAP.md](ROADMAP.md))
-- [ ] **P24 — Production hardening** — security headers, rate limiting, audit logs,
-  structured logging/monitoring, CI-friendly structure, more tests.
+### Backlog (roadmap P12→P24 complete)
 - [ ] **Vendor menu CRUD on mobile** — full category/item management (web-primary today);
   split out of P22 to keep phases coherent.
 - [ ] **Stories** — 24h ephemeral posts (`stories` + `story_views` tables, endpoints, UI rails).

@@ -207,6 +207,17 @@ export interface Order {
   created_at: string;
 }
 
+export interface AuditLog {
+  id: number;
+  action: string;
+  actor: { id: number; name: string; username: string } | null;
+  auditable_type: string | null;
+  auditable_id: number | null;
+  meta: Record<string, unknown> | null;
+  ip_address: string | null;
+  created_at: string;
+}
+
 export interface Review {
   id: number;
   rating: number;

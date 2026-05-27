@@ -18,7 +18,11 @@ tiers with tests + a `WORKPHASE-N.md`, and updates `PROGRESS.md`.
 | 21 | **Delivery partner** | `delivery` role: assignment, accept, live status | ✅ Done |
 | 22 | **Order timeline + post detail** | Status-history UI + post detail with threaded comments | ✅ Done |
 | 23 | **Push + email verification UX** | Expo push (FCM/APNs); verify-email screens | ✅ Done |
-| 24 | **Production hardening** | Security headers, rate limits, audit logs, logging/monitoring, CI, more tests | ⏳ Next |
+| 24 | **Production hardening** | Security headers, rate limits, audit logs, logging/monitoring, CI, more tests | ✅ Done |
+
+**🎉 Roadmap complete — P12 → P24 all delivered.** Remaining backlog (vendor menu
+CRUD on mobile, stories, policy-enforcement automation, frontend test harness) is
+tracked in [PROGRESS.md](PROGRESS.md).
 
 ## Notes on infrastructure phases (P15–P19)
 Redis, Meilisearch, Reverb, and payment gateways are **not running in the current

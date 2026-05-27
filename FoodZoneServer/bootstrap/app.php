@@ -4,6 +4,7 @@ use App\Exceptions\ApiException;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\OptionalSanctum;
+use App\Http\Middleware\SecurityHeaders;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -31,6 +32,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'active' => EnsureActiveUser::class,
             'auth.optional' => OptionalSanctum::class,
         ]);
+
+        // Hardening headers on every API response.
+        $middleware->api(append: [SecurityHeaders::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Render all API (and JSON) exceptions in the standard envelope.
