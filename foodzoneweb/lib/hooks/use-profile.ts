@@ -10,6 +10,7 @@ export interface ProfileInput {
   username?: string;
   bio?: string;
   website?: string;
+  location?: string;
   avatar?: string | null;
   cover?: string | null;
   is_private?: boolean;

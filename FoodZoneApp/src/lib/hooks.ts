@@ -62,7 +62,15 @@ export function useCreatePost() {
 
 export function useUpdateProfile() {
   return useMutation({
-    mutationFn: (body: { avatar?: string | null; name?: string; bio?: string }) => api.put<User>('/profile', body),
+    mutationFn: (body: {
+      avatar?: string | null;
+      cover?: string | null;
+      name?: string;
+      bio?: string;
+      location?: string;
+      website?: string;
+      is_private?: boolean;
+    }) => api.put<User>('/profile', body),
     onSuccess: (res) => useAuthStore.getState().setUser(res.data),
   });
 }
@@ -615,11 +623,48 @@ export function useMessages(conversationId: number) {
 export function useSendMessage(conversationId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: string) => api.post<Message>(`/conversations/${conversationId}/messages`, { body }),
+    mutationFn: (input: string | { body?: string; type?: 'text' | 'image' | 'voice' | 'file'; media_url?: string; replied_to_message_id?: number | null }) => {
+      const payload = typeof input === 'string' ? { body: input } : input;
+      return api.post<Message>(`/conversations/${conversationId}/messages`, payload);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['messages', conversationId] });
       qc.invalidateQueries({ queryKey: ['conversations'] });
     },
+  });
+}
+
+export function useToggleReact(conversationId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ messageId, emoji }: { messageId: number; emoji: string }) =>
+      api.post(`/messages/${messageId}/react`, { emoji }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messages', conversationId] }),
+  });
+}
+
+export function useDeleteMessage(conversationId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: number) => api.del(`/messages/${messageId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messages', conversationId] }),
+  });
+}
+
+export function useTogglePinConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (conversationId: number) => api.put(`/conversations/${conversationId}/pin`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['conversations'] }),
+  });
+}
+
+export function useMuteConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, muted, minutes }: { conversationId: number; muted: boolean; minutes?: number }) =>
+      api.put(`/conversations/${conversationId}/mute`, { muted, minutes }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['conversations'] }),
   });
 }
 

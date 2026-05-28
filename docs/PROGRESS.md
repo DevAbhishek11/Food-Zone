@@ -5,7 +5,7 @@ delivered across all relevant tiers and verified (`php artisan test` / web `buil
 / mobile `tsc`+`expo lint`+`expo export`). Per-phase detail lives in `WORKPHASE-N.md`;
 the index is `WORKPHASES.md`.
 
-_Last updated: 2026-05-27 · Backend tests: **146** · Mobile routes: **27** · Web pages: **31** · Roadmaps: [ROADMAP.md](ROADMAP.md) (P12→P24 ✅) + **v3.0 enhancement (P25→P36, in progress)**_
+_Last updated: 2026-05-27 · Backend tests: **175** · Mobile routes: **27** · Web pages: **34** · Roadmaps: [ROADMAP.md](ROADMAP.md) (P12→P24 ✅) + **v3.0 enhancement (P25→P36, in progress)**_
 
 ### v3.0 enhancement roadmap (P25–P36, from `27May2026Prompt.md`)
 - [x] **P25 — Landing page + role-separated auth**: public `/` marketing landing (hero/features/
@@ -20,9 +20,31 @@ _Last updated: 2026-05-27 · Backend tests: **146** · Mobile routes: **27** · 
   (4 new tables, 13 tests); web StoryBar+viewer, PostCard save/share/hashtag-links, TrendingSidebar,
   `/hashtag/[tag]`; mobile FlashList feed + story bar + double-tap-like/haptics + save. Polls deferred.
   _(Backend + Web + Mobile)_
-- [ ] P28 profile · P29 chat v2 · P30 vendor store ·
-  P31 vendor dash v3 · P32 admin v3 · P33 explore · P34 notifications/onboarding ·
-  P35 performance · P36 advanced features. _(+ deferred: post polls)_
+- [x] **P28 — Profile experience**: `users.is_verified`, `user_profiles.location`, `story_highlights`
+  table; `/users/{u}` adds member_since/top_food_tags/mutual_followers; food-journey + tagged-in
+  endpoints; highlights CRUD; web `/u/[username]` rebuild (cover/verified/tabs/mutuals) + `/profile`
+  details editor; mobile cover banner + verified + about-you editor (bio/location/website/private).
+  _(Backend + Web + Mobile)_
+- [x] **P29 — Chat v2**: pin/mute on pivot; messages +replied_to/type/media_url/SoftDeletes;
+  `message_reactions` + `starred_messages` tables; 10 new endpoints (pin/mute/typing/react/star
+  /unstar/starred/delete-message/search/forward); `UserTyping` broadcast; resources enriched
+  (reactions grouped, replied_to snippet, is_deleted placeholder, is_starred); web hover toolbar
+  (React/Reply/Delete) + reactions row + reply preview + pin/mute on list; mobile long-press
+  action sheet + reactions row + pin/mute list. +9 tests. _(Backend + Web + Mobile)_
+- [x] **P30 — Vendor store UI**: vendors.tags + vendor_reports migration; `/vendors/{id}` adds
+  delivery_estimate_min/max + opens_at + tags + has_offer; `/vendors/{id}/menu` adds popular_items;
+  Haversine `/vendors/nearby` (PHP impl for SQLite portability); `/items/trending`;
+  `POST vendors/{id}/report`; web vendor page hero polish (status pill / delivery strip / tags /
+  veg-dot / 🔥 Popular badge); mobile vendor screen polish. +5 tests. _(Backend + Web + Mobile)_
+- [x] **P31 — Vendor dashboard v3**: `vendor_user_blocks` + `inventory_items` + `flash_deals`
+  migration; customers (anonymized + warn DM + block/unblock), inventory CRUD + adjust (with
+  ok/low/out status), vouchers full CRUD, item analytics, daily payouts, flash-deal create;
+  web `/vendor/customers` + `/vendor/inventory` + `/vendor/vouchers` + nav tabs. +7 tests.
+  _(Backend + Web; mobile out of scope)_
+- [ ] P32 admin v3 · P33 explore · P34 notifications/onboarding ·
+  P35 performance · P36 advanced features. _(+ deferred: post polls, story-highlight UI,
+  voice/file messages UI, starred-messages page, user reports → P32, sticky category tab bar,
+  Kanban orders board, satisfaction donut, flash-deal create UI)_
 
 
 ---

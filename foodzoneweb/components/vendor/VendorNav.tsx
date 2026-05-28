@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { Clock, LayoutDashboard, ListOrdered, Star, UtensilsCrossed } from "lucide-react";
+import { Boxes, Clock, LayoutDashboard, ListOrdered, Star, Tag, Users, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -10,6 +10,9 @@ const TABS = [
   { href: "/vendor/orders", label: "Orders", icon: ListOrdered },
   { href: "/vendor/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/vendor/hours", label: "Hours", icon: Clock },
+  { href: "/vendor/customers", label: "Customers", icon: Users },
+  { href: "/vendor/inventory", label: "Inventory", icon: Boxes },
+  { href: "/vendor/vouchers", label: "Vouchers", icon: Tag },
   { href: "/vendor/reviews", label: "Reviews", icon: Star },
 ];
 

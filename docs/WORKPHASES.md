@@ -41,10 +41,14 @@ The full product spec lives in `FoodZone_PROJECT.md`. The API contract is in `Fo
 | 25 | [Public landing page + role-separated auth](WORKPHASE-25.md) | Web | ✅ Done |
 | 26 | [Design system overhaul](WORKPHASE-26.md) | Web + Mobile | ✅ Done |
 | 27 | [Feed & post experience (stories/saved/share/hashtags)](WORKPHASE-27.md) | Backend + Web + Mobile | ✅ Done |
+| 28 | [Profile experience (cover/verified/mutuals/tabs/highlights)](WORKPHASE-28.md) | Backend + Web + Mobile | ✅ Done |
+| 29 | [Chat v2 (pin/mute/react/reply/delete/star/search/forward/typing)](WORKPHASE-29.md) | Backend + Web + Mobile | ✅ Done |
+| 30 | [Vendor store UI (open status/delivery strip/tags/popular/nearby)](WORKPHASE-30.md) | Backend + Web + Mobile | ✅ Done |
+| 31 | [Vendor dashboard v3 (customers/inventory/vouchers/payouts)](WORKPHASE-31.md) | Backend + Web | ✅ Done |
 
 > 🚀 **v3.0 enhancement roadmap (P25–P36)** — `27May2026Prompt.md`: landing/auth,
 > design-system overhaul, feed/profile/chat/vendor/admin/explore upgrades,
-> notifications/onboarding, performance, advanced features. P25–P27 done.
+> notifications/onboarding, performance, advanced features. P25–P31 done.
 
 > 📋 Live completed/pending work tracker: **[PROGRESS.md](PROGRESS.md)**.
 > 🗺️ Production-grade roadmap (P12→P24): **[ROADMAP.md](ROADMAP.md)**.
@@ -78,7 +82,7 @@ Seeded logins (password `password`): `admin@foodzone.app`, `alice@example.com`.
 
 | Tier | Command | Result |
 |---|---|---|
-| Backend | `php artisan test` | **146 passing** |
-| Web | `npm run build` + `npm run lint` | clean (**31 pages**) |
+| Backend | `php artisan test` | **175 passing** |
+| Web | `npm run build` + `npm run lint` | clean (**34 pages**) |
 | Mobile | `npx tsc --noEmit` + `npx expo lint` + `npx expo export` | clean (27 routes, iOS+Android+web) |
 | CI | `.github/workflows/ci.yml` | backend + web + mobile jobs |

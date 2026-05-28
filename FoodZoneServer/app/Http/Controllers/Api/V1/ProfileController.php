@@ -23,6 +23,7 @@ class ProfileController extends Controller
             ],
             'bio' => ['nullable', 'string', 'max:500'],
             'website' => ['nullable', 'url', 'max:255'],
+            'location' => ['nullable', 'string', 'max:100'],
             'avatar' => ['nullable', 'string', 'max:2048'],
             'cover' => ['nullable', 'string', 'max:2048'],
             'is_private' => ['sometimes', 'boolean'],
@@ -37,7 +38,7 @@ class ProfileController extends Controller
 
         $me->profile()->updateOrCreate(
             ['user_id' => $me->id],
-            $request->only(['bio', 'website', 'avatar', 'cover', 'is_private', 'food_preferences', 'dietary_restrictions'])
+            $request->only(['bio', 'website', 'location', 'avatar', 'cover', 'is_private', 'food_preferences', 'dietary_restrictions'])
         );
 
         return ApiResponse::success(

@@ -15,6 +15,7 @@ class UserProfileResource extends JsonResource
             'avatar' => $this->avatar,
             'cover' => $this->cover,
             'website' => $this->website,
+            'location' => $this->location,
             'is_private' => (bool) $this->is_private,
             'food_preferences' => $this->food_preferences ?? [],
             'dietary_restrictions' => $this->dietary_restrictions ?? [],

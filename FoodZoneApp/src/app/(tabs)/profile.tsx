@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Button } from '@/components/ui';
@@ -56,17 +57,29 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }}>
         <Text style={{ color: c.text, fontSize: 22, fontWeight: '700' }}>Profile</Text>
 
-        <View style={{ backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: Spacing.four, gap: Spacing.three }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
-            <Pressable onPress={changeAvatar} disabled={uploading}>
+        <View style={{ backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border, overflow: 'hidden' }}>
+          <View
+            style={{
+              height: 90,
+              backgroundColor: user.profile?.cover ? undefined : c.brand + '33',
+            }}
+          >
+            {user.profile?.cover ? (
+              <Image source={{ uri: user.profile.cover }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+            ) : null}
+          </View>
+          <View style={{ padding: Spacing.four, gap: Spacing.three }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.three, marginTop: -Spacing.four }}>
+            <Pressable onPress={changeAvatar} disabled={uploading} style={{ borderWidth: 3, borderColor: c.card, borderRadius: 999 }}>
               <Avatar uri={user.profile?.avatar} name={user.name} size={72} />
               <View style={{ position: 'absolute', bottom: -2, right: -2, backgroundColor: c.brand, borderRadius: 999, padding: 4 }}>
                 <Ionicons name={uploading ? 'hourglass' : 'camera'} size={12} color="#fff" />
               </View>
             </Pressable>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, paddingBottom: 4 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Text style={{ color: c.text, fontSize: 20, fontWeight: '700' }}>{user.name}</Text>
+                {user.is_verified && <Ionicons name="shield-checkmark" size={18} color={c.info} />}
                 {user.email_verified && <Ionicons name="checkmark-circle" size={18} color={c.brand} />}
               </View>
               <Text style={{ color: c.textSecondary }}>@{user.username}</Text>
@@ -98,7 +111,10 @@ export default function ProfileScreen() {
               </View>
             ))}
           </View>
+          </View>
         </View>
+
+        <DetailsEditor />
 
         <Button title="Delivery addresses" variant="secondary" fullWidth onPress={() => router.push('/addresses')} />
 
@@ -130,5 +146,68 @@ export default function ProfileScreen() {
         />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function DetailsEditor() {
+  const c = useTheme();
+  const user = useAuthStore((s) => s.user);
+  const update = useUpdateProfile();
+  const [bio, setBio] = useState(user?.profile?.bio ?? '');
+  const [location, setLocation] = useState(user?.profile?.location ?? '');
+  const [website, setWebsite] = useState(user?.profile?.website ?? '');
+  const [isPrivate, setIsPrivate] = useState(!!user?.profile?.is_private);
+
+  const save = () => {
+    update.mutate(
+      {
+        bio: bio.trim(),
+        location: location.trim(),
+        website: website.trim() || undefined,
+        is_private: isPrivate,
+      },
+      {
+        onSuccess: () => Alert.alert('Saved', 'Profile updated.'),
+        onError: (e) => Alert.alert('Error', e instanceof ApiError ? e.message : 'Try again.'),
+      },
+    );
+  };
+
+  return (
+    <View style={{ backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: Spacing.four, gap: Spacing.two }}>
+      <Text style={{ color: c.text, fontWeight: '700', marginBottom: Spacing.one }}>About you</Text>
+      <TextInput
+        value={bio}
+        onChangeText={setBio}
+        placeholder="Tell people what you love eating…"
+        placeholderTextColor={c.textSecondary}
+        multiline
+        maxLength={500}
+        style={{ minHeight: 70, borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: Spacing.three, color: c.text, textAlignVertical: 'top' }}
+      />
+      <TextInput
+        value={location}
+        onChangeText={setLocation}
+        placeholder="City"
+        placeholderTextColor={c.textSecondary}
+        maxLength={100}
+        style={{ height: 44, borderWidth: 1, borderColor: c.border, borderRadius: 12, paddingHorizontal: Spacing.three, color: c.text }}
+      />
+      <TextInput
+        value={website}
+        onChangeText={setWebsite}
+        placeholder="https://your.site"
+        placeholderTextColor={c.textSecondary}
+        autoCapitalize="none"
+        keyboardType="url"
+        maxLength={255}
+        style={{ height: 44, borderWidth: 1, borderColor: c.border, borderRadius: 12, paddingHorizontal: Spacing.three, color: c.text }}
+      />
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ color: c.textSecondary }}>Private account</Text>
+        <Switch value={isPrivate} onValueChange={setIsPrivate} trackColor={{ true: c.brand }} />
+      </View>
+      <Button title="Save changes" onPress={save} loading={update.isPending} fullWidth />
+    </View>
   );
 }

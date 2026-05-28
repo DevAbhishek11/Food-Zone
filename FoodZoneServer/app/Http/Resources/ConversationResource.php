@@ -30,6 +30,9 @@ class ConversationResource extends JsonResource
                 'created_at' => $this->latestMessage->created_at?->toIso8601String(),
             ] : null),
             'unread' => (int) ($this->unread_count ?? 0),
+            'is_pinned' => (bool) ($this->is_pinned ?? false),
+            'is_muted' => (bool) ($this->is_muted ?? false),
+            'muted_until' => $this->muted_until ? \Illuminate\Support\Carbon::parse($this->muted_until)->toIso8601String() : null,
             'last_message_at' => $this->last_message_at?->toIso8601String(),
         ];
     }

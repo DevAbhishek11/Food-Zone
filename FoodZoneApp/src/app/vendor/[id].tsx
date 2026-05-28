@@ -41,7 +41,7 @@ export default function VendorMenuScreen() {
     );
   }
 
-  const { vendor, categories, uncategorized } = data.data;
+  const { vendor, categories, uncategorized, popular_items: popularItems = [] } = data.data;
   const groups = [
     ...categories.map((cat) => ({ name: cat.name, items: cat.items ?? [] })),
     ...(uncategorized.length ? [{ name: 'More', items: uncategorized }] : []),
@@ -80,12 +80,44 @@ export default function VendorMenuScreen() {
                 {vendor.rating_avg > 0 ? `${vendor.rating_avg.toFixed(1)} (${vendor.rating_count})` : 'New'}
               </Text>
             </View>
-            <Text style={{ color: c.textSecondary, fontSize: 13 }}>{vendor.prep_time_minutes} min</Text>
+            <Text style={{ color: c.textSecondary, fontSize: 13 }}>
+              {vendor.delivery_estimate_min != null
+                ? `🚴 ${vendor.delivery_estimate_min}–${vendor.delivery_estimate_max} min`
+                : `${vendor.prep_time_minutes} min`}
+            </Text>
             {vendor.min_order_value > 0 && (
               <Text style={{ color: c.textSecondary, fontSize: 13 }}>Min {money(vendor.min_order_value)}</Text>
             )}
           </View>
-          {!vendor.is_open && <Text style={{ color: c.danger, fontWeight: '600' }}>Currently closed</Text>}
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, flexWrap: 'wrap' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: vendor.is_open ? c.success + '22' : c.danger + '22' }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: vendor.is_open ? c.success : c.danger }} />
+              <Text style={{ color: vendor.is_open ? c.success : c.danger, fontSize: 12, fontWeight: '600' }}>
+                {vendor.is_open ? 'Open' : 'Closed'}
+              </Text>
+            </View>
+            {!vendor.is_open && vendor.opens_at && (
+              <Text style={{ color: c.textSecondary, fontSize: 12 }}>
+                Opens {new Date(vendor.opens_at).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}
+              </Text>
+            )}
+            {vendor.has_offer && (
+              <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: c.brand + '22' }}>
+                <Text style={{ color: c.brand, fontSize: 12, fontWeight: '600' }}>🎟 Offers</Text>
+              </View>
+            )}
+          </View>
+
+          {vendor.tags && vendor.tags.length > 0 && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+              {vendor.tags.map((t) => (
+                <View key={t} style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: 1, borderColor: c.border, backgroundColor: c.backgroundElement }}>
+                  <Text style={{ color: c.textSecondary, fontSize: 11 }}>{t}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {groups.map((group) => (
@@ -93,7 +125,7 @@ export default function VendorMenuScreen() {
             <Text style={{ color: c.text, fontSize: 18, fontWeight: '700', marginBottom: Spacing.two }}>{group.name}</Text>
             <View style={{ gap: Spacing.two }}>
               {group.items.map((item) => (
-                <MenuRow key={item.id} item={item} vendor={vendor} />
+                <MenuRow key={item.id} item={item} vendor={vendor} isPopular={popularItems.includes(item.id)} />
               ))}
             </View>
           </View>
@@ -136,7 +168,7 @@ export default function VendorMenuScreen() {
   );
 }
 
-function MenuRow({ item, vendor }: { item: MenuItem; vendor: Vendor }) {
+function MenuRow({ item, vendor, isPopular }: { item: MenuItem; vendor: Vendor; isPopular?: boolean }) {
   const c = useTheme();
   const cart = useCartStore();
   const [customizing, setCustomizing] = useState(false);
@@ -154,7 +186,14 @@ function MenuRow({ item, vendor }: { item: MenuItem; vendor: Vendor }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two, backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border, padding: Spacing.three }}>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: c.text, fontWeight: '600' }}>{item.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={{ color: c.text, fontWeight: '600' }}>{item.name}</Text>
+          {isPopular && (
+            <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999, backgroundColor: c.warning + '22' }}>
+              <Text style={{ color: c.warning, fontSize: 10, fontWeight: '700' }}>🔥</Text>
+            </View>
+          )}
+        </View>
         {!!item.description && <Text numberOfLines={2} style={{ color: c.textSecondary, fontSize: 13 }}>{item.description}</Text>}
         <Text style={{ color: c.brand, fontWeight: '700', marginTop: 4 }}>{money(item.price)}</Text>
         {customizable && <Text style={{ color: c.textSecondary, fontSize: 12 }}>Customizable</Text>}

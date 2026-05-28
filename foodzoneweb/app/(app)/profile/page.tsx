@@ -105,6 +105,8 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        <ProfileDetailsForm />
+
         <Link
           href="/addresses"
           className="flex items-center gap-3 rounded-card border border-line bg-bg-soft p-4 hover:bg-surface"
@@ -139,5 +141,65 @@ export default function ProfilePage() {
         </Button>
       </div>
     </>
+  );
+}
+
+function ProfileDetailsForm() {
+  const { user } = useAuth();
+  const update = useUpdateProfile();
+  const [bio, setBio] = useState(user.profile?.bio ?? "");
+  const [location, setLocation] = useState(user.profile?.location ?? "");
+  const [website, setWebsite] = useState(user.profile?.website ?? "");
+  const [isPrivate, setIsPrivate] = useState(!!user.profile?.is_private);
+
+  const save = async () => {
+    try {
+      await update.mutateAsync({
+        bio: bio.trim(),
+        location: location.trim(),
+        website: website.trim() || undefined,
+        is_private: isPrivate,
+      });
+      toast.success("Profile updated.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not save.");
+    }
+  };
+
+  return (
+    <div className="rounded-card border border-line bg-bg-soft p-4">
+      <h3 className="mb-3 text-sm font-semibold">About you</h3>
+      <div className="space-y-3">
+        <textarea
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          maxLength={500}
+          placeholder="Tell people what you love eating…"
+          rows={3}
+          className="w-full resize-none rounded-lg border border-line bg-bg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/60"
+        />
+        <input
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder="City"
+          maxLength={100}
+          className="h-10 w-full rounded-lg border border-line bg-bg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/60"
+        />
+        <input
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          placeholder="https://your.site"
+          maxLength={255}
+          className="h-10 w-full rounded-lg border border-line bg-bg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/60"
+        />
+        <label className="flex items-center gap-2 text-sm text-muted">
+          <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} className="accent-brand" />
+          Make my account private
+        </label>
+        <Button onClick={save} loading={update.isPending}>
+          Save changes
+        </Button>
+      </div>
+    </div>
   );
 }

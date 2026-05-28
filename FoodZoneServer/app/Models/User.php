@@ -30,6 +30,7 @@ class User extends Authenticatable
         'gender',
         'referral_code',
         'referred_by',
+        'is_verified',
     ];
 
     protected $hidden = [
@@ -90,6 +91,11 @@ class User extends Authenticatable
     public function stories(): HasMany
     {
         return $this->hasMany(Story::class);
+    }
+
+    public function highlights(): HasMany
+    {
+        return $this->hasMany(StoryHighlight::class);
     }
 
     public function savedPosts(): HasMany

@@ -39,10 +39,20 @@ export function useMessages(conversationId: number) {
   });
 }
 
+export interface SendMessageInput {
+  body?: string;
+  type?: "text" | "image" | "voice" | "file";
+  media_url?: string;
+  replied_to_message_id?: number | null;
+}
+
 export function useSendMessage(conversationId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: string) => api.post<Message>(`/conversations/${conversationId}/messages`, { body }),
+    mutationFn: (input: string | SendMessageInput) => {
+      const payload = typeof input === "string" ? { body: input } : input;
+      return api.post<Message>(`/conversations/${conversationId}/messages`, payload);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["messages", conversationId] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
@@ -55,5 +65,47 @@ export function useMarkConversationRead(conversationId: number) {
   return useMutation({
     mutationFn: () => api.post(`/conversations/${conversationId}/read`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["conversations"] }),
+  });
+}
+
+// ---- Chat v2 actions -------------------------------------------------------
+
+export function useToggleReact(conversationId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ messageId, emoji }: { messageId: number; emoji: string }) =>
+      api.post(`/messages/${messageId}/react`, { emoji }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["messages", conversationId] }),
+  });
+}
+
+export function useDeleteMessage(conversationId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: number) => api.del(`/messages/${messageId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["messages", conversationId] }),
+  });
+}
+
+export function useTogglePinConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (conversationId: number) => api.put(`/conversations/${conversationId}/pin`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["conversations"] }),
+  });
+}
+
+export function useMuteConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, muted, minutes }: { conversationId: number; muted: boolean; minutes?: number }) =>
+      api.put(`/conversations/${conversationId}/mute`, { muted, minutes }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["conversations"] }),
+  });
+}
+
+export function useTyping(conversationId: number) {
+  return useMutation({
+    mutationFn: () => api.post(`/conversations/${conversationId}/typing`),
   });
 }

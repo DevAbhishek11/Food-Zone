@@ -26,8 +26,91 @@ class UserController extends Controller
         $payload['is_following'] = $me ? $me->isFollowing($user->id) : false;
         $payload['is_blocked'] = $me ? $me->hasBlocked($user->id) : false;
         $payload['follows_me'] = $me ? $user->isFollowing($me->id) : false;
+        $payload['member_since'] = $user->created_at?->format('F Y');
+        $payload['top_food_tags'] = $this->topFoodTags($user->id);
+        $payload['mutual_followers'] = $me && $me->id !== $user->id ? $this->mutualFollowers($me, $user) : [];
 
         return ApiResponse::success($payload, 'User profile retrieved.');
+    }
+
+    /** Posts by this user that tag a vendor or menu item — their "food journey". */
+    public function foodJourney(Request $request, string $username): JsonResponse
+    {
+        $target = User::where('username', $username)->firstOrFail();
+        $me = $request->user();
+
+        if ($me && ($me->hasBlocked($target->id) || $target->hasBlocked($me->id))) {
+            abort(404, 'Resource not found.');
+        }
+
+        $isSelf = $me && $me->id === $target->id;
+        $isFollowing = $me ? $me->isFollowing($target->id) : false;
+
+        $posts = Post::query()
+            ->where('user_id', $target->id)
+            ->where(fn ($q) => $q->whereNotNull('tagged_vendor_id')->orWhereNotNull('tagged_item_id'))
+            ->where(function ($q) use ($isSelf, $isFollowing) {
+                if ($isSelf) return;
+                $q->where('privacy', PostPrivacy::Public->value);
+                if ($isFollowing) $q->orWhere('privacy', PostPrivacy::Followers->value);
+            })
+            ->with(['user.profile', 'media', 'taggedVendor'])
+            ->latest()
+            ->paginate(15);
+
+        return ApiResponse::paginated($posts, PostResource::class, 'Food journey loaded.');
+    }
+
+    /** Public posts that @mention this user in the body. */
+    public function taggedIn(Request $request, string $username): JsonResponse
+    {
+        $target = User::where('username', $username)->firstOrFail();
+
+        $posts = Post::query()
+            ->where('privacy', PostPrivacy::Public->value)
+            ->where('body', 'like', '%@'.$target->username.'%')
+            ->where('user_id', '!=', $target->id)
+            ->with(['user.profile', 'media'])
+            ->latest()
+            ->paginate(15);
+
+        return ApiResponse::paginated($posts, PostResource::class, 'Tagged posts loaded.');
+    }
+
+    /** Top 5 hashtags this user has used across their public posts. */
+    private function topFoodTags(int $userId): array
+    {
+        $bodies = Post::where('user_id', $userId)
+            ->where('privacy', PostPrivacy::Public->value)
+            ->whereNotNull('body')
+            ->latest()
+            ->limit(200)
+            ->pluck('body');
+
+        $counts = [];
+        foreach ($bodies as $body) {
+            preg_match_all('/#(\w+)/u', (string) $body, $m);
+            foreach ($m[1] as $tag) {
+                $key = mb_strtolower($tag);
+                $counts[$key] = ($counts[$key] ?? 0) + 1;
+            }
+        }
+        arsort($counts);
+
+        return array_slice(array_keys($counts), 0, 5);
+    }
+
+    /** Up to 3 followers shared between the viewer and the target user. */
+    private function mutualFollowers(User $me, User $target): array
+    {
+        $myFollowing = $me->following()->where('status', 'accepted')->pluck('following_id');
+        $theirFollowers = $target->followers()->where('status', 'accepted')->pluck('follower_id');
+        $ids = $myFollowing->intersect($theirFollowers)->take(3)->all();
+        if (empty($ids)) return [];
+
+        return User::whereIn('id', $ids)->with('profile')->get()
+            ->map(fn ($u) => ['id' => $u->id, 'username' => $u->username, 'name' => $u->name, 'avatar' => $u->profile?->avatar])
+            ->all();
     }
 
     /** A user's posts, respecting privacy relative to the viewer. */

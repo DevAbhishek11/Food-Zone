@@ -42,7 +42,7 @@ export default function VendorMenuPage() {
     );
   }
 
-  const { vendor, categories, uncategorized } = data.data;
+  const { vendor, categories, uncategorized, popular_items: popularItems = [] } = data.data;
   const allGroups = [
     ...categories.map((c) => ({ name: c.name, items: c.items ?? [] })),
     ...(uncategorized.length ? [{ name: "More", items: uncategorized }] : []),
@@ -62,20 +62,47 @@ export default function VendorMenuPage() {
             <img src={vendor.banner} alt="" className="h-full w-full object-cover" />
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4">
-          <h1 className="text-2xl font-semibold">{vendor.name}</h1>
-          <FavoriteButton vendorId={vendor.id} initial={vendor.is_favorited} size={20} />
-          <span className="flex items-center gap-1 text-sm text-warning">
-            <Star className="h-4 w-4 fill-current" />
-            {vendor.rating_avg > 0 ? vendor.rating_avg.toFixed(1) : "New"}
-            <span className="text-muted">({vendor.rating_count})</span>
-          </span>
-          <span className="text-sm text-muted">· {vendor.prep_time_minutes} min</span>
-          {vendor.min_order_value > 0 && (
-            <span className="text-sm text-muted">· Min {money(vendor.min_order_value)}</span>
-          )}
-          {!vendor.is_open && (
-            <span className="rounded-full bg-danger/90 px-2 py-0.5 text-xs font-medium text-white">Closed</span>
+        <div className="space-y-2 p-4">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="text-2xl font-semibold">{vendor.name}</h1>
+            <FavoriteButton vendorId={vendor.id} initial={vendor.is_favorited} size={20} />
+            {vendor.is_open ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" /> Open
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger">
+                <span className="h-1.5 w-1.5 rounded-full bg-danger" /> Closed
+                {vendor.opens_at && (
+                  <span className="text-muted">· Opens {new Date(vendor.opens_at).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}</span>
+                )}
+              </span>
+            )}
+            {vendor.has_offer && (
+              <span className="rounded-full bg-brand/15 px-2 py-0.5 text-xs font-medium text-brand">🎟 Offers</span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+            <span className="flex items-center gap-1 text-warning">
+              <Star className="h-4 w-4 fill-current" />
+              {vendor.rating_avg > 0 ? vendor.rating_avg.toFixed(1) : "New"}
+              <span className="text-muted">({vendor.rating_count})</span>
+            </span>
+            {vendor.delivery_estimate_min != null && (
+              <span>🚴 {vendor.delivery_estimate_min}–{vendor.delivery_estimate_max} min</span>
+            )}
+            {vendor.delivery_fee > 0 && <span>· {money(vendor.delivery_fee)} delivery</span>}
+            {vendor.free_delivery_above && <span>· Free above {money(vendor.free_delivery_above)}</span>}
+            {vendor.min_order_value > 0 && <span>· Min {money(vendor.min_order_value)}</span>}
+          </div>
+
+          {vendor.tags && vendor.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {vendor.tags.map((t) => (
+                <span key={t} className="rounded-full border border-line bg-surface px-2 py-0.5 text-xs text-muted">{t}</span>
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -91,7 +118,14 @@ export default function VendorMenuPage() {
                 <h2 className="mb-3 text-lg font-semibold">{group.name}</h2>
                 <div className="space-y-3">
                   {group.items.map((item) => (
-                    <MenuItemRow key={item.id} item={item} vendorId={vendor.id} vendorName={vendor.name} canOrder={vendor.is_open} />
+                    <MenuItemRow
+                      key={item.id}
+                      item={item}
+                      vendorId={vendor.id}
+                      vendorName={vendor.name}
+                      canOrder={vendor.is_open}
+                      isPopular={popularItems.includes(item.id)}
+                    />
                   ))}
                 </div>
               </section>
@@ -118,11 +152,13 @@ function MenuItemRow({
   vendorId,
   vendorName,
   canOrder,
+  isPopular,
 }: {
   item: MenuItem;
   vendorId: number;
   vendorName: string;
   canOrder: boolean;
+  isPopular?: boolean;
 }) {
   const add = useCartStore((s) => s.add);
   const [customizing, setCustomizing] = useState(false);
@@ -142,8 +178,22 @@ function MenuItemRow({
   return (
     <div className="flex items-start gap-4 rounded-card border border-line bg-bg-soft p-4">
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{item.name}</p>
-        {item.description && <p className="line-clamp-2 text-sm text-muted">{item.description}</p>}
+        <div className="flex items-center gap-2">
+          {item.dietary_tags?.includes("veg") || item.dietary_tags?.includes("vegan") ? (
+            <span title="Veg" className="flex h-4 w-4 items-center justify-center rounded border border-success">
+              <span className="h-1.5 w-1.5 rounded-full bg-success" />
+            </span>
+          ) : item.dietary_tags?.includes("non-veg") || item.dietary_tags?.includes("non_veg") ? (
+            <span title="Non-veg" className="flex h-4 w-4 items-center justify-center rounded border border-danger">
+              <span className="h-1.5 w-1.5 rounded-full bg-danger" />
+            </span>
+          ) : null}
+          <p className="font-medium">{item.name}</p>
+          {isPopular && (
+            <span className="rounded-full bg-warning/15 px-1.5 py-0.5 text-[10px] font-medium uppercase text-warning">🔥 Popular</span>
+          )}
+        </div>
+        {item.description && <p className="mt-1 line-clamp-2 text-sm text-muted">{item.description}</p>}
         <p className="mt-1 text-sm font-semibold text-brand">{money(item.price)}</p>
         {customizable && <p className="text-xs text-muted">Customizable</p>}
         {item.dietary_tags?.length > 0 && (

@@ -24,6 +24,7 @@ export interface UserProfile {
   avatar: string | null;
   cover: string | null;
   website: string | null;
+  location?: string | null;
   is_private: boolean;
   food_preferences: string[];
   dietary_restrictions: string[];
@@ -43,6 +44,7 @@ export interface User {
   gender: string | null;
   dob: string | null;
   email_verified: boolean;
+  is_verified?: boolean;
   referral_code: string | null;
   profile?: UserProfile | null;
   created_at?: string;
@@ -50,6 +52,9 @@ export interface User {
   is_following?: boolean;
   is_blocked?: boolean;
   follows_me?: boolean;
+  member_since?: string;
+  top_food_tags?: string[];
+  mutual_followers?: { id: number; username: string; name: string; avatar: string | null }[];
 }
 
 export interface AuthPayload {
@@ -179,6 +184,12 @@ export interface Vendor {
   orders_count: number;
   is_favorited?: boolean;
   commission_rate: number;
+  tags?: string[];
+  has_offer?: boolean;
+  delivery_estimate_min?: number | null;
+  delivery_estimate_max?: number | null;
+  opens_at?: string | null;
+  distance_km?: number;
   categories?: MenuCategory[];
 }
 
@@ -186,6 +197,7 @@ export interface VendorMenu {
   vendor: Vendor;
   categories: MenuCategory[];
   uncategorized: MenuItem[];
+  popular_items?: number[];
 }
 
 export interface OrderItem {
@@ -274,14 +286,30 @@ export interface Conversation {
   other: ChatUser | null;
   last_message: { body: string; is_mine: boolean; created_at: string } | null;
   unread: number;
+  is_pinned?: boolean;
+  is_muted?: boolean;
+  muted_until?: string | null;
   last_message_at: string | null;
+}
+
+export interface MessageReactionGroup {
+  emoji: string;
+  count: number;
+  mine: boolean;
 }
 
 export interface Message {
   id: number;
   conversation_id: number;
-  body: string;
+  body: string | null;
+  type?: "text" | "image" | "voice" | "file";
+  media_url?: string | null;
   is_mine: boolean;
+  is_deleted?: boolean;
+  replied_to_message_id?: number | null;
+  replied_to?: { id: number; body: string | null; sender_id: number } | null;
+  reactions?: MessageReactionGroup[];
+  is_starred?: boolean;
   sender?: ChatUser;
   created_at: string;
 }

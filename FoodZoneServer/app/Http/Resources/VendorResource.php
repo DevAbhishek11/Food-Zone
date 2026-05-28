@@ -36,6 +36,11 @@ class VendorResource extends JsonResource
             'orders_count' => (int) $this->orders_count,
             'is_favorited' => (bool) ($this->is_favorited ?? false),
             'commission_rate' => (float) $this->commission_rate,
+            'tags' => $this->tags ?? [],
+            'has_offer' => (bool) ($this->has_offer ?? false),
+            'delivery_estimate_min' => $this->delivery_estimate_min ?? null,
+            'delivery_estimate_max' => $this->delivery_estimate_max ?? null,
+            'opens_at' => $this->opens_at ?? null,
             'categories' => MenuCategoryResource::collection($this->whenLoaded('categories')),
             'created_at' => $this->created_at?->toIso8601String(),
         ];

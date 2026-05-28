@@ -69,12 +69,18 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('posts/{post}/shares', [PostController::class, 'shares']);
 
         Route::get('vendors', [VendorController::class, 'index']);
+        // Discovery — registered before /vendors/{idOrSlug} so 'nearby' isn't treated as a slug.
+        Route::get('vendors/nearby', [VendorController::class, 'nearby']);
+        Route::get('items/trending', [VendorController::class, 'itemsTrending']);
         Route::get('vendors/{idOrSlug}', [VendorController::class, 'show']);
         Route::get('vendors/{idOrSlug}/menu', [VendorController::class, 'menu']);
         Route::get('vendors/{idOrSlug}/reviews', [ReviewController::class, 'index']);
 
         Route::get('users/{username}', [UserController::class, 'show']);
         Route::get('users/{username}/posts', [UserController::class, 'posts']);
+        Route::get('users/{username}/food-journey', [UserController::class, 'foodJourney']);
+        Route::get('users/{username}/tagged-in', [UserController::class, 'taggedIn']);
+        Route::get('users/{username}/highlights', [\App\Http\Controllers\Api\V1\StoryHighlightController::class, 'index']);
         Route::get('users/{user}/followers', [UserController::class, 'followers']);
         Route::get('users/{user}/following', [UserController::class, 'following']);
     });
@@ -116,6 +122,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('stories/{story}/view', [StoryController::class, 'view']);
         Route::get('stories/{story}/views', [StoryController::class, 'views']);
 
+        // Story highlights (own management)
+        Route::post('story-highlights', [\App\Http\Controllers\Api\V1\StoryHighlightController::class, 'store']);
+        Route::delete('story-highlights/{highlight}', [\App\Http\Controllers\Api\V1\StoryHighlightController::class, 'destroy']);
+
         // Follow graph
         Route::post('users/{user}/follow', [UserController::class, 'follow']);
         Route::delete('users/{user}/follow', [UserController::class, 'unfollow']);
@@ -129,6 +139,17 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('conversations/{conversation}/messages', [\App\Http\Controllers\Api\V1\ChatController::class, 'messages']);
         Route::post('conversations/{conversation}/messages', [\App\Http\Controllers\Api\V1\ChatController::class, 'send']);
         Route::post('conversations/{conversation}/read', [\App\Http\Controllers\Api\V1\ChatController::class, 'markRead']);
+        // Chat v2 actions
+        Route::put('conversations/{conversation}/pin', [\App\Http\Controllers\Api\V1\ChatController::class, 'pin']);
+        Route::put('conversations/{conversation}/mute', [\App\Http\Controllers\Api\V1\ChatController::class, 'mute']);
+        Route::post('conversations/{conversation}/typing', [\App\Http\Controllers\Api\V1\ChatController::class, 'typing']);
+        Route::get('conversations/{conversation}/search', [\App\Http\Controllers\Api\V1\ChatController::class, 'search']);
+        Route::get('conversations/{conversation}/starred', [\App\Http\Controllers\Api\V1\ChatController::class, 'starred']);
+        Route::post('conversations/{conversation}/forward', [\App\Http\Controllers\Api\V1\ChatController::class, 'forward']);
+        Route::delete('messages/{message}', [\App\Http\Controllers\Api\V1\ChatController::class, 'deleteMessage']);
+        Route::post('messages/{message}/react', [\App\Http\Controllers\Api\V1\ChatController::class, 'react']);
+        Route::post('messages/{message}/star', [\App\Http\Controllers\Api\V1\ChatController::class, 'star']);
+        Route::delete('messages/{message}/star', [\App\Http\Controllers\Api\V1\ChatController::class, 'unstar']);
 
         // Notifications
         Route::get('notifications', [NotificationController::class, 'index']);
@@ -142,6 +163,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('favorites', [VendorController::class, 'favorites']);
         Route::post('vendors/{vendor}/favorite', [VendorController::class, 'favorite']);
         Route::delete('vendors/{vendor}/favorite', [VendorController::class, 'unfavorite']);
+        Route::post('vendors/{vendor}/report', [VendorController::class, 'report']);
 
         // Checkout — price the cart (variants/add-ons + voucher) before placing.
         Route::post('checkout/quote', [\App\Http\Controllers\Api\V1\CheckoutController::class, 'quote']);
@@ -190,6 +212,27 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             Route::post('orders/{order}/status', [OrderController::class, 'updateStatus']);
             Route::get('reviews', [ReviewController::class, 'vendorIndex']);
             Route::post('reviews/{rating}/reply', [ReviewController::class, 'reply']);
+
+            // ---- P31 Vendor Dashboard v3 ----
+            Route::get('customers', [VendorController::class, 'customers']);
+            Route::post('customers/{userId}/warn', [VendorController::class, 'warnCustomer']);
+            Route::post('customers/{userId}/block', [VendorController::class, 'blockCustomer']);
+            Route::delete('customers/{userId}/block', [VendorController::class, 'unblockCustomer']);
+
+            Route::get('inventory', [VendorController::class, 'inventory']);
+            Route::post('inventory', [VendorController::class, 'inventoryStore']);
+            Route::put('inventory/{item}', [VendorController::class, 'inventoryUpdate']);
+            Route::delete('inventory/{item}', [VendorController::class, 'inventoryDestroy']);
+            Route::post('inventory/{item}/adjust', [VendorController::class, 'inventoryAdjust']);
+
+            Route::get('vouchers', [VendorController::class, 'vouchersIndex']);
+            Route::post('vouchers', [VendorController::class, 'vouchersStore']);
+            Route::put('vouchers/{voucher}', [VendorController::class, 'vouchersUpdate']);
+            Route::delete('vouchers/{voucher}', [VendorController::class, 'vouchersDestroy']);
+
+            Route::get('analytics/items', [VendorController::class, 'itemsAnalytics']);
+            Route::get('payouts', [VendorController::class, 'payouts']);
+            Route::post('flash-deals', [VendorController::class, 'flashDealCreate']);
         });
 
         // Admin

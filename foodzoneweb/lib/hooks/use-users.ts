@@ -13,11 +13,34 @@ export function useUserProfile(username: string) {
   });
 }
 
-export function useUserPosts(username: string) {
+export function useUserPosts(username: string, enabled = true) {
   return useInfiniteQuery({
     queryKey: ["user-posts", username],
     initialPageParam: 1,
+    enabled,
     queryFn: ({ pageParam }) => api.get<Post[]>(`/users/${username}/posts`, { query: { page: pageParam } }),
+    getNextPageParam: (last: ApiEnvelope<Post[]>) =>
+      last.meta?.has_more ? last.meta.current_page + 1 : undefined,
+  });
+}
+
+export function useUserFoodJourney(username: string, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ["user-food-journey", username],
+    initialPageParam: 1,
+    enabled,
+    queryFn: ({ pageParam }) => api.get<Post[]>(`/users/${username}/food-journey`, { query: { page: pageParam } }),
+    getNextPageParam: (last: ApiEnvelope<Post[]>) =>
+      last.meta?.has_more ? last.meta.current_page + 1 : undefined,
+  });
+}
+
+export function useUserTaggedIn(username: string, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ["user-tagged", username],
+    initialPageParam: 1,
+    enabled,
+    queryFn: ({ pageParam }) => api.get<Post[]>(`/users/${username}/tagged-in`, { query: { page: pageParam } }),
     getNextPageParam: (last: ApiEnvelope<Post[]>) =>
       last.meta?.has_more ? last.meta.current_page + 1 : undefined,
   });

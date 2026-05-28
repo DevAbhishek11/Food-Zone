@@ -21,7 +21,7 @@ class Vendor extends Model
         'status', 'rejection_reason', 'is_open', 'closed_message', 'commission_rate',
         'min_order_value', 'delivery_enabled', 'delivery_fee', 'free_delivery_above',
         'prep_time_minutes', 'cod_enabled', 'is_featured', 'approved_at',
-        'rating_avg', 'rating_count', 'orders_count',
+        'rating_avg', 'rating_count', 'orders_count', 'tags',
     ];
 
     protected $casts = [
@@ -38,6 +38,7 @@ class Vendor extends Model
         'lat' => 'float',
         'lng' => 'float',
         'radius_km' => 'float',
+        'tags' => 'array',
         'approved_at' => 'datetime',
     ];
 
