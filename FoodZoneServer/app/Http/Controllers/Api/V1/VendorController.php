@@ -148,27 +148,39 @@ class VendorController extends Controller
         $vendor = $this->resolveVendor($idOrSlug, $request);
         $this->annotateDiscovery($vendor);
 
-        $categories = $vendor->categories()
-            ->where('status', 'approved')
-            ->with(['items' => fn ($q) => $q->where('is_available', true)->with(['variants', 'addons', 'images'])])
-            ->orderBy('sort_order')
-            ->get();
+        // 60s cache — menu reads are the hottest unauthenticated endpoint
+        // and the payload eager-loads categories + items + variants + addons.
+        // Vendor edits show up within ~1 minute; explicit invalidation isn't
+        // worth the bookkeeping at this TTL.
+        $payload = Cache::remember("vendor:{$vendor->id}:menu", 60, function () use ($vendor) {
+            $categories = $vendor->categories()
+                ->where('status', 'approved')
+                ->with(['items' => fn ($q) => $q->where('is_available', true)->with(['variants', 'addons', 'images'])])
+                ->orderBy('sort_order')
+                ->get();
 
-        $uncategorized = $vendor->items()
-            ->whereNull('category_id')->where('is_available', true)
-            ->with(['variants', 'addons', 'images'])->get();
+            $uncategorized = $vendor->items()
+                ->whereNull('category_id')->where('is_available', true)
+                ->with(['variants', 'addons', 'images'])->get();
 
-        $popularIds = $vendor->items()
-            ->where('is_available', true)
-            ->orderByDesc('orders_count')
-            ->limit(5)
-            ->pluck('id');
+            $popularIds = $vendor->items()
+                ->where('is_available', true)
+                ->orderByDesc('orders_count')
+                ->limit(5)
+                ->pluck('id');
+
+            return [
+                'categories' => MenuCategoryResource::collection($categories)->resolve(),
+                'uncategorized' => MenuItemResource::collection($uncategorized)->resolve(),
+                'popular_items' => $popularIds,
+            ];
+        });
 
         return ApiResponse::success([
             'vendor' => new VendorResource($vendor),
-            'categories' => MenuCategoryResource::collection($categories),
-            'uncategorized' => MenuItemResource::collection($uncategorized),
-            'popular_items' => $popularIds,
+            'categories' => $payload['categories'],
+            'uncategorized' => $payload['uncategorized'],
+            'popular_items' => $payload['popular_items'],
         ], 'Menu retrieved.');
     }
 

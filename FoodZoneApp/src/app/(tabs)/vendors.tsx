@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyView, ErrorView, Loading } from '@/components/ui';
@@ -42,14 +43,18 @@ export default function VendorsScreen() {
       ) : isError ? (
         <ErrorView message="Couldn't load restaurants." onRetry={refetch} />
       ) : (
-        <FlatList
+        <FlashList<Vendor>
           data={vendors}
           keyExtractor={(v) => String(v.id)}
-          contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }}
+          contentContainerStyle={{ padding: Spacing.three }}
           onEndReached={() => hasNextPage && fetchNextPage()}
           onEndReachedThreshold={0.5}
           ListEmptyComponent={<EmptyView title="No restaurants found" hint="Try a different search." />}
-          renderItem={({ item }) => <VendorCard vendor={item} onPress={() => router.push(`/vendor/${item.slug}`)} />}
+          renderItem={({ item }) => (
+            <View style={{ marginBottom: Spacing.three }}>
+              <VendorCard vendor={item} onPress={() => router.push(`/vendor/${item.slug}`)} />
+            </View>
+          )}
         />
       )}
     </SafeAreaView>

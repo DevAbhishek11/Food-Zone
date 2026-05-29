@@ -11,11 +11,15 @@ use App\Http\Resources\AuditLogResource;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\VendorResource;
+use App\Http\Resources\ViolationResource;
 use App\Models\AuditLog;
 use App\Models\Order;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Models\Violation;
+use App\Models\ViolationAction;
+use Illuminate\Support\Facades\DB;
 use App\Services\AuditService;
 use App\Services\NotificationService;
 use App\Support\ApiResponse;
@@ -288,5 +292,179 @@ class AdminController extends Controller
         $this->audit->log($request->user(), 'vendor.rejected', $vendor, ['reason' => $reason]);
 
         return ApiResponse::success(new VendorResource($vendor->fresh()), 'Vendor rejected.');
+    }
+
+    // ---- P32 Admin Console v3 -------------------------------------------
+
+    /** Filterable list of moderation violations (reports queue). */
+    public function violations(Request $request): JsonResponse
+    {
+        $violations = Violation::query()
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
+            ->when($request->filled('type'), fn ($q) => $q->where('type', $request->string('type')))
+            ->with(['user.profile', 'reporter.profile', 'actions'])
+            ->latest()
+            ->paginate(20);
+
+        return ApiResponse::paginated($violations, ViolationResource::class, 'Violations loaded.');
+    }
+
+    /** Apply a moderation action on a violation (warn / suspend / ban / dismiss / remove_content). */
+    public function resolveViolation(Request $request, Violation $violation): JsonResponse
+    {
+        $data = $request->validate([
+            'action_type' => ['required', Rule::in(['dismiss', 'warn', 'suspend', 'ban', 'remove_content'])],
+            'days' => ['required_if:action_type,suspend', 'integer', Rule::in([7, 14, 30])],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+        $me = $request->user();
+
+        DB::transaction(function () use ($violation, $data, $me) {
+            $offender = $violation->user;
+
+            switch ($data['action_type']) {
+                case 'dismiss':
+                    $violation->update(['status' => 'dismissed', 'handled_by' => $me->id]);
+                    break;
+
+                case 'warn':
+                    $this->notifications->notify(
+                        $offender->id, 'system', 'Policy warning',
+                        $data['notes'] ?? 'A moderator has issued a warning. Please review our community guidelines.',
+                    );
+                    $violation->update(['status' => 'resolved', 'handled_by' => $me->id]);
+                    break;
+
+                case 'suspend':
+                    $until = now()->addDays($data['days']);
+                    $offender->forceFill([
+                        'status' => UserStatus::Suspended->value,
+                        'suspended_until' => $until,
+                    ])->save();
+                    $offender->tokens()->delete();
+                    $this->notifications->notify(
+                        $offender->id, 'system', 'Account suspended',
+                        ($data['notes'] ?? 'Your account has been suspended.')." Until {$until->toDateString()}.",
+                    );
+                    $violation->update(['status' => 'resolved', 'handled_by' => $me->id]);
+                    break;
+
+                case 'ban':
+                    $offender->forceFill(['status' => UserStatus::Banned->value])->save();
+                    $offender->tokens()->delete();
+                    $this->notifications->notify(
+                        $offender->id, 'system', 'Account banned',
+                        $data['notes'] ?? 'Your account has been permanently banned.',
+                    );
+                    $violation->update(['status' => 'resolved', 'handled_by' => $me->id]);
+                    break;
+
+                case 'remove_content':
+                    $subject = $violation->subject;
+                    $subject?->delete();
+                    $violation->update(['status' => 'resolved', 'handled_by' => $me->id]);
+                    break;
+            }
+
+            ViolationAction::create([
+                'violation_id' => $violation->id,
+                'action_type' => $data['action_type'],
+                'performed_by' => $me->id,
+                'notes' => $data['notes'] ?? null,
+            ]);
+            $this->audit->log($me, "moderation.{$data['action_type']}", $violation, ['offender_id' => $offender->id]);
+        });
+
+        return ApiResponse::success(null, 'Action applied.');
+    }
+
+    /** Platform revenue breakdown over a window, with top-vendor slice. */
+    public function revenue(Request $request): JsonResponse
+    {
+        $days = min(max((int) $request->query('days', 30), 1), 365);
+        $from = now()->subDays($days);
+
+        $base = Order::where('status', OrderStatus::Delivered->value)->where('created_at', '>=', $from);
+        $gross = (float) (clone $base)->sum('total');
+        $commission = (float) (clone $base)->sum('commission');
+        $refunded = (float) Order::where('payment_status', 'refunded')
+            ->where('updated_at', '>=', $from)->sum('total');
+
+        $topRows = (clone $base)
+            ->selectRaw('vendor_id, SUM(total) as gross, SUM(commission) as commission')
+            ->groupBy('vendor_id')
+            ->orderByDesc('gross')
+            ->limit(10)
+            ->get();
+        $vendors = Vendor::whereIn('id', $topRows->pluck('vendor_id'))->get()->keyBy('id');
+        $topVendors = $topRows->map(fn ($r) => [
+            'vendor_id' => (int) $r->vendor_id,
+            'vendor_name' => $vendors->get($r->vendor_id)?->name ?? 'Unknown',
+            'gross' => round((float) $r->gross, 2),
+            'commission' => round((float) $r->commission, 2),
+            'net' => round((float) $r->gross - (float) $r->commission, 2),
+        ]);
+
+        return ApiResponse::success([
+            'range_days' => $days,
+            'gross' => round($gross, 2),
+            'commission' => round($commission, 2),
+            'refunded' => round($refunded, 2),
+            'net' => round($gross - $commission, 2),
+            'top_vendors' => $topVendors,
+        ], 'Revenue breakdown.');
+    }
+
+    /** Toggle a vendor's homepage-feature flag. */
+    public function featureVendor(Request $request, Vendor $vendor): JsonResponse
+    {
+        $vendor->update(['is_featured' => ! $vendor->is_featured]);
+        $this->audit->log($request->user(), $vendor->is_featured ? 'vendor.featured' : 'vendor.unfeatured', $vendor);
+
+        return ApiResponse::success(['is_featured' => (bool) $vendor->is_featured], 'Toggled.');
+    }
+
+    /** Send a system-wide notification to all users or a filtered segment. */
+    public function broadcast(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:100'],
+            'message' => ['required', 'string', 'max:500'],
+            'segment' => ['nullable', Rule::in(['all', 'users', 'vendors', 'admins', 'verified'])],
+        ]);
+        $segment = $data['segment'] ?? 'all';
+
+        $query = User::query()->where('status', UserStatus::Active->value);
+        if ($segment === 'users') $query->where('role', UserRole::User->value);
+        elseif ($segment === 'vendors') $query->where('role', UserRole::Vendor->value);
+        elseif ($segment === 'admins') $query->whereIn('role', [UserRole::Admin->value, UserRole::SuperAdmin->value]);
+        elseif ($segment === 'verified') $query->where('is_verified', true);
+
+        $count = 0;
+        $query->chunk(200, function ($users) use ($data, &$count) {
+            foreach ($users as $u) {
+                $this->notifications->notify($u->id, 'system', $data['title'], $data['message']);
+                $count++;
+            }
+        });
+
+        $this->audit->log($request->user(), 'platform.broadcast', null, [
+            'segment' => $segment, 'count' => $count, 'title' => $data['title'],
+        ]);
+
+        return ApiResponse::success(['recipients' => $count], 'Broadcast sent.');
+    }
+
+    /** Lightweight system-health snapshot (DB/cache/queue/storage) for the admin home. */
+    public function systemHealth(): JsonResponse
+    {
+        $health = app(HealthController::class);
+
+        return ApiResponse::success([
+            'database' => $health->database(),
+            'cache' => $health->cache(),
+            'queue' => $health->queue(),
+            'storage' => $health->storage(),
+        ], 'System health snapshot.');
     }
 }

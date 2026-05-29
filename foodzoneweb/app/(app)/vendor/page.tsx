@@ -1,6 +1,5 @@
 "use client";
 
-import { OrdersChart, RevenueChart, StatusPie } from "@/components/admin/Charts";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -10,7 +9,13 @@ import { money } from "@/lib/format";
 import { useToggleStoreOpen, useVendorAnalytics, useVendorStats } from "@/lib/hooks/use-vendor-admin";
 import { toast } from "@/lib/toast-store";
 import { Clock, ShoppingBag, Star, Wallet } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
+
+const chartFallback = <Skeleton className="h-60 w-full" />;
+const RevenueChart = dynamic(() => import("@/components/admin/Charts").then((m) => m.RevenueChart), { ssr: false, loading: () => chartFallback });
+const OrdersChart = dynamic(() => import("@/components/admin/Charts").then((m) => m.OrdersChart), { ssr: false, loading: () => chartFallback });
+const StatusPie = dynamic(() => import("@/components/admin/Charts").then((m) => m.StatusPie), { ssr: false, loading: () => chartFallback });
 
 const RANGES = [7, 14, 30];
 

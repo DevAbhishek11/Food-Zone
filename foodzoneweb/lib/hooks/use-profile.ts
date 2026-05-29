@@ -23,3 +23,9 @@ export function useUpdateProfile() {
     onSuccess: (res) => useAuthStore.getState().setUser(res.data),
   });
 }
+
+export function useDeactivateAccount() {
+  return useMutation({
+    mutationFn: () => api.post("/profile/deactivate"),
+  });
+}

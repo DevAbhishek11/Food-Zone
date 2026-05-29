@@ -45,10 +45,15 @@ The full product spec lives in `FoodZone_PROJECT.md`. The API contract is in `Fo
 | 29 | [Chat v2 (pin/mute/react/reply/delete/star/search/forward/typing)](WORKPHASE-29.md) | Backend + Web + Mobile | ✅ Done |
 | 30 | [Vendor store UI (open status/delivery strip/tags/popular/nearby)](WORKPHASE-30.md) | Backend + Web + Mobile | ✅ Done |
 | 31 | [Vendor dashboard v3 (customers/inventory/vouchers/payouts)](WORKPHASE-31.md) | Backend + Web | ✅ Done |
+| 32 | [Admin console v3 (reports queue/broadcast/revenue/feature/health)](WORKPHASE-32.md) | Backend + Web | ✅ Done |
+| 33 | [Explore & discovery (sectioned hub + map + masonry mobile)](WORKPHASE-33.md) | Backend + Web + Mobile | ✅ Done |
+| 34 | [Notifications grouping + preferences + onboarding wizard](WORKPHASE-34.md) | Backend + Web + Mobile | ✅ Done |
+| 35 | [Performance (composite indexes + cache + lazy charts + FlashList)](WORKPHASE-35.md) | Backend + Web + Mobile | ✅ Done |
+| 36 | [Advanced features (loyalty + badges + leaderboard + flash-deals + Settings)](WORKPHASE-36.md) | Backend + Web + Mobile | ✅ Done |
 
 > 🚀 **v3.0 enhancement roadmap (P25–P36)** — `27May2026Prompt.md`: landing/auth,
 > design-system overhaul, feed/profile/chat/vendor/admin/explore upgrades,
-> notifications/onboarding, performance, advanced features. P25–P31 done.
+> notifications/onboarding, performance, advanced features. **All P25–P36 complete.** ✅
 
 > 📋 Live completed/pending work tracker: **[PROGRESS.md](PROGRESS.md)**.
 > 🗺️ Production-grade roadmap (P12→P24): **[ROADMAP.md](ROADMAP.md)**.
@@ -82,7 +87,7 @@ Seeded logins (password `password`): `admin@foodzone.app`, `alice@example.com`.
 
 | Tier | Command | Result |
 |---|---|---|
-| Backend | `php artisan test` | **175 passing** |
-| Web | `npm run build` + `npm run lint` | clean (**34 pages**) |
-| Mobile | `npx tsc --noEmit` + `npx expo lint` + `npx expo export` | clean (27 routes, iOS+Android+web) |
+| Backend | `php artisan test` | **212 passing** |
+| Web | `npm run build` + `npm run lint` | clean (**43 pages**, Recharts code-split out of /admin + /vendor initial chunks) |
+| Mobile | `npx tsc --noEmit` + `npx expo lint` + `npx expo export` | clean (32 routes, iOS+Android+web) |
 | CI | `.github/workflows/ci.yml` | backend + web + mobile jobs |

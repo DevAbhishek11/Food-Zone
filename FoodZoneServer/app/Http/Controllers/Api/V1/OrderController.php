@@ -275,6 +275,11 @@ class OrderController extends Controller
             'note' => $note,
         ]);
 
+        // Award loyalty points + recompute badges when an order completes.
+        if ($next === OrderStatus::Delivered) {
+            app(\App\Services\LoyaltyService::class)->awardForDelivery($order->fresh());
+        }
+
         event(new OrderStatusUpdated($order->id, $order->user_id, $next->value, $order->order_number));
     }
 

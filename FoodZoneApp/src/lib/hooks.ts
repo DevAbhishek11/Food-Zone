@@ -2,7 +2,105 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { api } from './api';
 import { useAuthStore } from './auth-store';
-import type { Address, ApiEnvelope, AppNotification, Comment, Conversation, Message, OperatingHour, Order, Post, Review, Story, StoryGroup, User, Vendor, VendorMenu } from './types';
+import type { Address, ApiEnvelope, AppNotification, Comment, Conversation, MenuItem, Message, OperatingHour, Order, Post, Review, Story, StoryGroup, User, Vendor, VendorMenu } from './types';
+
+// ---- Loyalty + leaderboard ----------------------------------------------
+
+export type LoyaltyTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+
+export interface LoyaltyBadgeRow {
+  key: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  awarded_at: string | null;
+}
+
+export interface LoyaltySnapshot {
+  points: number;
+  lifetime_points: number;
+  tier: LoyaltyTier;
+  next_tier: { name: LoyaltyTier; points_to_go: number } | null;
+  badges: LoyaltyBadgeRow[];
+  recent_transactions: { id: number; amount: number; reason: string; order_id: number | null; created_at: string }[];
+}
+
+export function useLoyalty() {
+  return useQuery({
+    queryKey: ['me', 'loyalty'],
+    queryFn: () => api.get<LoyaltySnapshot>('/me/loyalty'),
+    select: (e) => e.data,
+    staleTime: 60_000,
+  });
+}
+
+export function useDeactivateAccount() {
+  return useMutation({
+    mutationFn: () => api.post('/profile/deactivate'),
+  });
+}
+
+export interface ExplorePayload {
+  trending_posts: Post[];
+  trending_vendors: { vendor: Vendor; orders_24h: number; order_delta: number }[];
+  trending_hashtags: { tag: string; count: number }[];
+  trending_items: { item: MenuItem; recent_orders: number }[];
+  suggested_users: {
+    user: { id: number; name: string; username: string; avatar: string | null };
+    mutual_count: number;
+    reason: 'mutuals' | 'popular';
+  }[];
+  nearby_vendors: (Vendor & { distance_km: number })[];
+}
+
+export interface GroupedNotifications {
+  today: AppNotification[];
+  this_week: AppNotification[];
+  earlier: AppNotification[];
+}
+
+export function useGroupedNotifications() {
+  return useQuery({
+    queryKey: ['notifications', 'grouped'],
+    queryFn: () => api.get<GroupedNotifications>('/notifications', { query: { grouped: 1 } }),
+    select: (e) => e.data,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useCompleteOnboarding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      food_preferences?: string[];
+      dietary_restrictions?: string[];
+      location?: string;
+      follow_user_ids?: number[];
+    }) => api.post('/onboarding/complete', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['auth', 'me'] }),
+  });
+}
+
+export function useSkipOnboarding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post('/onboarding/skip'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['auth', 'me'] }),
+  });
+}
+
+export function useExplore(coords: { lat: number; lng: number } | null) {
+  return useQuery({
+    queryKey: ['explore', coords?.lat ?? null, coords?.lng ?? null],
+    queryFn: () =>
+      api.get<ExplorePayload>('/explore', {
+        query: coords ? { lat: coords.lat, lng: coords.lng, radius: 10 } : undefined,
+      }),
+    select: (e) => e.data,
+    staleTime: 60_000,
+  });
+}
 
 export interface AddressInput {
   label?: string;

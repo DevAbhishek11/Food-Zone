@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
-import { ActionSheetIOS, Alert, FlatList, Platform, Pressable, Text, View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, EmptyView, ErrorView, Loading } from '@/components/ui';
@@ -53,10 +54,10 @@ export default function MessagesScreen() {
       ) : isError ? (
         <ErrorView message="Couldn't load conversations." onRetry={refetch} />
       ) : (
-        <FlatList
+        <FlashList
           data={conversations}
           keyExtractor={(c) => String(c.id)}
-          contentContainerStyle={{ padding: Spacing.three, gap: Spacing.two }}
+          contentContainerStyle={{ padding: Spacing.three }}
           onEndReached={() => hasNextPage && fetchNextPage()}
           onEndReachedThreshold={0.5}
           ListEmptyComponent={<EmptyView title="No messages yet" hint="Start a chat from someone's profile." />}
@@ -65,7 +66,7 @@ export default function MessagesScreen() {
               onPress={() => router.push(`/messages/${item.id}`)}
               onLongPress={() => onLongPress(item)}
               delayLongPress={300}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border, padding: Spacing.three }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border, padding: Spacing.three, marginBottom: Spacing.two }}
             >
               <Avatar uri={item.other?.avatar} name={item.other?.name ?? 'User'} size={48} />
               <View style={{ flex: 1 }}>

@@ -4,6 +4,62 @@ import { api } from "@/lib/api";
 import type { ApiEnvelope, AppNotification } from "@/lib/types";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+export type NotificationChannel = "push" | "email" | "in_app";
+export type NotificationPrefMatrix = Record<string, Record<NotificationChannel, boolean>>;
+export interface GroupedNotifications {
+  today: AppNotification[];
+  this_week: AppNotification[];
+  earlier: AppNotification[];
+}
+
+export function useGroupedNotifications(type?: string) {
+  return useQuery({
+    queryKey: ["notifications", "grouped", type ?? "all"],
+    queryFn: () =>
+      api.get<GroupedNotifications>("/notifications", { query: { grouped: 1, ...(type ? { type } : {}) } })
+        .then((r) => r.data),
+    refetchInterval: 60_000,
+  });
+}
+
+export function useNotificationPreferences() {
+  return useQuery({
+    queryKey: ["notifications", "preferences"],
+    queryFn: () => api.get<NotificationPrefMatrix>("/notifications/preferences").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSaveNotificationPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (preferences: { type: string; channel: NotificationChannel; enabled: boolean }[]) =>
+      api.post<NotificationPrefMatrix>("/notifications/preferences", { preferences }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications", "preferences"] }),
+  });
+}
+
+export function useCompleteOnboarding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      food_preferences?: string[];
+      dietary_restrictions?: string[];
+      location?: string;
+      follow_user_ids?: number[];
+    }) => api.post("/onboarding/complete", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["auth", "me"] }),
+  });
+}
+
+export function useSkipOnboarding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post("/onboarding/skip"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["auth", "me"] }),
+  });
+}
+
 /** Live-ish unread badge: polls every 30s while a session is active. */
 export function useUnreadCount() {
   return useQuery({

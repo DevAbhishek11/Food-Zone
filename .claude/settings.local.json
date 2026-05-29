@@ -34,7 +34,11 @@
       "Read(//e/e/Project/FoodZoneServer/bootstrap/**)",
       "Read(//e/e/Project/FoodZoneServer/app/Http/**)",
       "Bash(grep -iE \"error|Compiled|/$|/feed|/vendor/login|/vendor/register|/admin/login|/register|/login\")",
-      "Bash(grep -iE \"^.{0,4}\\(○|ƒ|●\\).*\\(/$|/feed|/login|/register|/vendor|/admin\\)\")"
+      "Bash(grep -iE \"^.{0,4}\\(○|ƒ|●\\).*\\(/$|/feed|/login|/register|/vendor|/admin\\)\")",
+      "Bash(grep -nE \"public function __construct|use App\\\\\\\\\\\\\\\\Models\" app/Http/Controllers/Api/V1/AdminController.php)",
+      "Bash(grep -E \"Route \\\\\\(app\\\\\\)|Route \\\\\\(\\\\\\\\\\\\\\\\\\)|Route \\\\\\(/\\\\\\)|^├|^└\")",
+      "Bash(echo \"exit:$?\")",
+      "Bash(grep *)"
     ]
   }
 }

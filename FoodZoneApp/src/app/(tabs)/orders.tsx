@@ -1,6 +1,7 @@
+import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, FlatList, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Badge, Button, EmptyView, ErrorView, Loading } from '@/components/ui';
@@ -52,15 +53,15 @@ export default function OrdersScreen() {
       ) : isError ? (
         <ErrorView message="Couldn't load your orders." onRetry={refetch} />
       ) : (
-        <FlatList
+        <FlashList<Order>
           data={orders}
           keyExtractor={(o) => String(o.id)}
-          contentContainerStyle={{ padding: Spacing.three, gap: Spacing.two }}
+          contentContainerStyle={{ padding: Spacing.three }}
           onEndReached={() => hasNextPage && fetchNextPage()}
           onEndReachedThreshold={0.5}
           ListEmptyComponent={<EmptyView title="No orders yet" hint="Browse restaurants and place your first order." />}
-          renderItem={({ item }: { item: Order }) => (
-            <View style={{ backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: Spacing.three }}>
+          renderItem={({ item }) => (
+            <View style={{ backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border, padding: Spacing.three, marginBottom: Spacing.two }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Pressable style={{ flex: 1 }} onPress={() => router.push(`/order/${item.id}`)}>
                   <Text style={{ color: c.text, fontWeight: '600' }}>{item.vendor?.name ?? 'Restaurant'}</Text>

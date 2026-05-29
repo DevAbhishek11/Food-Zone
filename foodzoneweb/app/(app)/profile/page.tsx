@@ -6,9 +6,10 @@ import { ImageUpload } from "@/components/ui/ImageUpload";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useLoyalty } from "@/lib/hooks/use-loyalty";
 import { useUpdateProfile } from "@/lib/hooks/use-profile";
 import { toast } from "@/lib/toast-store";
-import { BadgeCheck, Bike, ChevronRight, LogOut, Mail, MapPin } from "lucide-react";
+import { BadgeCheck, Bike, ChevronRight, LogOut, Mail, MapPin, Settings, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -105,7 +106,18 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        <LoyaltyCard />
+
         <ProfileDetailsForm />
+
+        <Link
+          href="/settings"
+          className="flex items-center gap-3 rounded-card border border-line bg-bg-soft p-4 hover:bg-surface"
+        >
+          <Settings className="h-5 w-5 text-muted" />
+          <span className="flex-1 text-sm font-medium">Settings</span>
+          <ChevronRight className="h-4 w-4 text-muted" />
+        </Link>
 
         <Link
           href="/addresses"
@@ -141,6 +153,63 @@ export default function ProfilePage() {
         </Button>
       </div>
     </>
+  );
+}
+
+const TIER_STYLES: Record<string, { ring: string; text: string; pip: string; label: string }> = {
+  bronze: { ring: "ring-orange-700/40", text: "text-orange-700", pip: "bg-orange-700", label: "Bronze" },
+  silver: { ring: "ring-zinc-400/50", text: "text-zinc-400", pip: "bg-zinc-400", label: "Silver" },
+  gold: { ring: "ring-yellow-500/50", text: "text-yellow-500", pip: "bg-yellow-500", label: "Gold" },
+  platinum: { ring: "ring-cyan-400/50", text: "text-cyan-400", pip: "bg-cyan-400", label: "Platinum" },
+};
+
+function LoyaltyCard() {
+  const { data, isLoading } = useLoyalty();
+  if (isLoading || !data) {
+    return <div className="h-32 rounded-card bg-bg-soft" />;
+  }
+  const tier = TIER_STYLES[data.tier] ?? TIER_STYLES.bronze;
+  const unlocked = data.badges.filter((b) => b.unlocked);
+  const next = data.next_tier;
+
+  return (
+    <div className="rounded-card border border-line bg-bg-soft p-5">
+      <div className="flex items-center gap-3">
+        <span className={`flex h-12 w-12 items-center justify-center rounded-full bg-bg ring-4 ${tier.ring}`}>
+          <Sparkles className={`h-5 w-5 ${tier.text}`} />
+        </span>
+        <div className="flex-1">
+          <p className={`text-sm font-medium uppercase tracking-wide ${tier.text}`}>{tier.label}</p>
+          <p className="text-2xl font-semibold">{data.points.toLocaleString()} pts</p>
+        </div>
+        <Link href="/leaderboard" className="text-xs text-muted hover:text-content">Leaderboard →</Link>
+      </div>
+
+      {next && (
+        <div className="mt-4">
+          <div className="mb-1 flex justify-between text-xs text-muted">
+            <span>{next.points_to_go.toLocaleString()} pts to {TIER_STYLES[next.name]?.label ?? next.name}</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-bg">
+            <div className={`h-full ${tier.pip}`} style={{ width: `${Math.min(100, Math.round(100 * data.lifetime_points / (data.lifetime_points + next.points_to_go)))}%` }} />
+          </div>
+        </div>
+      )}
+
+      {unlocked.length > 0 && (
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">Badges earned</p>
+          <div className="flex flex-wrap gap-2">
+            {unlocked.map((b) => (
+              <span key={b.key} className="flex items-center gap-1 rounded-full border border-line bg-bg px-2.5 py-1 text-xs">
+                <Sparkles className="h-3 w-3 text-brand" />
+                {b.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

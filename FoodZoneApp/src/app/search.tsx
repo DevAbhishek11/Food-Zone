@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PostCard } from '@/components/post-card';
@@ -165,13 +166,17 @@ function UsersResults({ q }: { q: string }) {
   if (query.isLoading) return <Spinner />;
   if (items.length === 0) return <EmptyView title="No people found" />;
   return (
-    <FlatList
+    <FlashList<User>
       data={items}
       keyExtractor={(u) => String(u.id)}
-      contentContainerStyle={{ padding: Spacing.three, gap: Spacing.two }}
+      contentContainerStyle={{ padding: Spacing.three }}
       onEndReached={() => query.hasNextPage && query.fetchNextPage()}
       onEndReachedThreshold={0.5}
-      renderItem={({ item }) => <UserRow user={item} />}
+      renderItem={({ item }) => (
+        <View style={{ marginBottom: Spacing.two }}>
+          <UserRow user={item} />
+        </View>
+      )}
     />
   );
 }
@@ -182,13 +187,17 @@ function VendorsResults({ q }: { q: string }) {
   if (query.isLoading) return <Spinner />;
   if (items.length === 0) return <EmptyView title="No restaurants found" />;
   return (
-    <FlatList
+    <FlashList<Vendor>
       data={items}
       keyExtractor={(v) => String(v.id)}
-      contentContainerStyle={{ padding: Spacing.three, gap: Spacing.two }}
+      contentContainerStyle={{ padding: Spacing.three }}
       onEndReached={() => query.hasNextPage && query.fetchNextPage()}
       onEndReachedThreshold={0.5}
-      renderItem={({ item }) => <VendorRow vendor={item} />}
+      renderItem={({ item }) => (
+        <View style={{ marginBottom: Spacing.two }}>
+          <VendorRow vendor={item} />
+        </View>
+      )}
     />
   );
 }
@@ -199,13 +208,17 @@ function PostsResults({ q }: { q: string }) {
   if (query.isLoading) return <Spinner />;
   if (items.length === 0) return <EmptyView title="No posts found" />;
   return (
-    <FlatList
+    <FlashList<Post>
       data={items}
       keyExtractor={(p) => String(p.id)}
-      contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }}
+      contentContainerStyle={{ padding: Spacing.three }}
       onEndReached={() => query.hasNextPage && query.fetchNextPage()}
       onEndReachedThreshold={0.5}
-      renderItem={({ item }) => <PostCard post={item} />}
+      renderItem={({ item }) => (
+        <View style={{ marginBottom: Spacing.three }}>
+          <PostCard post={item} />
+        </View>
+      )}
     />
   );
 }

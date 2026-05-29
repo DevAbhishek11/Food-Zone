@@ -80,6 +80,31 @@ class CommentController extends Controller
         );
     }
 
+    /** Open a moderation violation for a comment (used by /comments/{comment}/report). */
+    public function report(Request $request, PostComment $comment): JsonResponse
+    {
+        if ($comment->user_id === $request->user()->id) {
+            return ApiResponse::error('You cannot report your own comment.', 422);
+        }
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:50'],
+            'detail' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        \App\Models\Violation::create([
+            'user_id' => $comment->user_id,
+            'type' => $data['reason'],
+            'evidence' => $data['detail'] ?? null,
+            'severity' => 'medium',
+            'status' => 'open',
+            'subject_type' => PostComment::class,
+            'subject_id' => $comment->id,
+            'reported_by' => $request->user()->id,
+        ]);
+
+        return ApiResponse::success(null, 'Report submitted. Thank you.', 201);
+    }
+
     public function destroy(Request $request, PostComment $comment): JsonResponse
     {
         if ($comment->user_id !== $request->user()->id && ! $request->user()->isAdmin()) {

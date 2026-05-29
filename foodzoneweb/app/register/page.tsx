@@ -56,7 +56,7 @@ export default function RegisterPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema), mode: "onTouched" });
 
   useEffect(() => {
-    if (status === "authenticated") router.replace(redirectAfterLogin(user?.role));
+    if (status === "authenticated") router.replace(redirectAfterLogin(user?.role, user?.onboarding_completed));
   }, [status, user, router]);
 
   const next = async () => {
@@ -69,7 +69,7 @@ export default function RegisterPage() {
       const { data } = await api.post<AuthPayload>("/auth/register", values, { auth: false });
       setAuth(data.user, data.token);
       toast.success("Account created! Check your email to verify.");
-      router.replace(redirectAfterLogin(data.user.role));
+      router.replace(redirectAfterLogin(data.user.role, data.user.onboarding_completed));
     } catch (e) {
       applyApiError(e, setError);
     }

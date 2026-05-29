@@ -33,7 +33,7 @@ export default function LoginPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
-    if (status === "authenticated") router.replace(redirectAfterLogin(user?.role));
+    if (status === "authenticated") router.replace(redirectAfterLogin(user?.role, user?.onboarding_completed));
   }, [status, user, router]);
 
   const onSubmit = async (values: FormValues) => {
@@ -41,7 +41,7 @@ export default function LoginPage() {
       const { data } = await api.post<AuthPayload>("/auth/login", values, { auth: false });
       setAuth(data.user, data.token);
       toast.success(`Welcome back, ${data.user.name.split(" ")[0]}!`);
-      router.replace(redirectAfterLogin(data.user.role));
+      router.replace(redirectAfterLogin(data.user.role, data.user.onboarding_completed));
     } catch (e) {
       applyApiError(e, setError);
     }

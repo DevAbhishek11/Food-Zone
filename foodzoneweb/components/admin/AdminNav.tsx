@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { LayoutDashboard, Receipt, ScrollText, Store, Users } from "lucide-react";
+import { Flag, LayoutDashboard, Megaphone, Receipt, ScrollText, Store, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -10,6 +10,8 @@ const TABS = [
   { href: "/admin/orders", label: "Orders", icon: Receipt },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/vendors", label: "Vendors", icon: Store },
+  { href: "/admin/reports", label: "Reports", icon: Flag },
+  { href: "/admin/broadcast", label: "Broadcast", icon: Megaphone },
   { href: "/admin/audit", label: "Audit", icon: ScrollText },
 ];
 

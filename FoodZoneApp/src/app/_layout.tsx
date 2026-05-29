@@ -17,17 +17,26 @@ function useAuthRedirect() {
   const router = useRouter();
   const segments = useSegments();
   const status = useAuthStore((s) => s.status);
+  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
     if (status === 'idle' || status === 'loading') return;
     const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+    const onOnboarding = segments[0] === 'onboarding';
 
     if (status === 'guest' && !inAuthGroup) {
       router.replace('/login');
     } else if (status === 'authenticated' && inAuthGroup) {
       router.replace('/');
+    } else if (
+      status === 'authenticated' &&
+      user?.role === 'user' &&
+      user?.onboarding_completed === false &&
+      !onOnboarding
+    ) {
+      router.replace('/onboarding');
     }
-  }, [status, segments, router]);
+  }, [status, segments, router, user]);
 }
 
 function RootNavigator() {
@@ -50,6 +59,9 @@ function RootNavigator() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="login" />
       <Stack.Screen name="register" />
+      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="settings" options={{ presentation: 'card' }} />
+      <Stack.Screen name="leaderboard" options={{ presentation: 'card' }} />
       <Stack.Screen name="vendor/[id]" options={{ presentation: 'card' }} />
       <Stack.Screen name="user/[username]" options={{ presentation: 'card' }} />
       <Stack.Screen name="post/[id]" options={{ presentation: 'card' }} />

@@ -10,7 +10,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { api, ApiError } from '@/lib/api';
 import { useAuthStore } from '@/lib/auth-store';
-import { useUpdateProfile } from '@/lib/hooks';
+import { useLoyalty, useUpdateProfile } from '@/lib/hooks';
 import { useMediaUpload } from '@/lib/use-media';
 
 export default function ProfileScreen() {
@@ -114,8 +114,11 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <LoyaltyCard />
+
         <DetailsEditor />
 
+        <Button title="Settings" variant="secondary" fullWidth onPress={() => router.push('/settings')} />
         <Button title="Delivery addresses" variant="secondary" fullWidth onPress={() => router.push('/addresses')} />
 
         {(user.role === 'user' || user.role === 'delivery') && (
@@ -146,6 +149,63 @@ export default function ProfileScreen() {
         />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+const TIER_TINT: Record<string, { bg: string; fg: string; label: string }> = {
+  bronze: { bg: '#b45309', fg: '#fff', label: 'Bronze' },
+  silver: { bg: '#71717a', fg: '#fff', label: 'Silver' },
+  gold: { bg: '#eab308', fg: '#fff', label: 'Gold' },
+  platinum: { bg: '#06b6d4', fg: '#fff', label: 'Platinum' },
+};
+
+function LoyaltyCard() {
+  const c = useTheme();
+  const router = useRouter();
+  const { data, isLoading } = useLoyalty();
+  if (isLoading || !data) {
+    return <View style={{ height: 90, backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border }} />;
+  }
+  const tier = TIER_TINT[data.tier] ?? TIER_TINT.bronze;
+  const unlocked = data.badges.filter((b) => b.unlocked);
+  const next = data.next_tier;
+  const progressPct = next
+    ? Math.min(100, Math.round(100 * data.lifetime_points / (data.lifetime_points + next.points_to_go)))
+    : 100;
+
+  return (
+    <Pressable onPress={() => router.push('/leaderboard' as never)} style={{ backgroundColor: c.card, borderRadius: 14, borderWidth: 1, borderColor: c.border, padding: Spacing.three, gap: Spacing.two }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tier.bg, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="sparkles" size={20} color={tier.fg} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: tier.bg, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>{tier.label}</Text>
+          <Text style={{ color: c.text, fontSize: 20, fontWeight: '700' }}>{data.points.toLocaleString()} pts</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={c.textSecondary} />
+      </View>
+      {next && (
+        <View style={{ gap: 4 }}>
+          <Text style={{ color: c.textSecondary, fontSize: 12 }}>
+            {next.points_to_go.toLocaleString()} pts to {TIER_TINT[next.name]?.label ?? next.name}
+          </Text>
+          <View style={{ height: 6, borderRadius: 3, backgroundColor: c.backgroundElement, overflow: 'hidden' }}>
+            <View style={{ width: `${progressPct}%`, height: '100%', backgroundColor: tier.bg }} />
+          </View>
+        </View>
+      )}
+      {unlocked.length > 0 && (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingTop: Spacing.two, borderTopWidth: 1, borderTopColor: c.border }}>
+          {unlocked.map((b) => (
+            <View key={b.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: c.backgroundElement }}>
+              <Ionicons name="ribbon" size={12} color={c.brand} />
+              <Text style={{ color: c.text, fontSize: 11, fontWeight: '600' }}>{b.name}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </Pressable>
   );
 }
 

@@ -1,14 +1,21 @@
 "use client";
 
 import { AdminNav } from "@/components/admin/AdminNav";
-import { OrdersChart, RevenueChart, StatusPie } from "@/components/admin/Charts";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/States";
 import { money } from "@/lib/format";
 import { useAdminAnalytics, useAdminDashboard } from "@/lib/hooks/use-admin";
 import { Clock, Receipt, Store, TrendingUp, Users, Wallet } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
+
+// Recharts ships ~100 KB of D3 internals. Lazy + ssr:false keeps it out of
+// the initial admin bundle and off the SSR render path.
+const chartFallback = <Skeleton className="h-60 w-full" />;
+const RevenueChart = dynamic(() => import("@/components/admin/Charts").then((m) => m.RevenueChart), { ssr: false, loading: () => chartFallback });
+const OrdersChart = dynamic(() => import("@/components/admin/Charts").then((m) => m.OrdersChart), { ssr: false, loading: () => chartFallback });
+const StatusPie = dynamic(() => import("@/components/admin/Charts").then((m) => m.StatusPie), { ssr: false, loading: () => chartFallback });
 
 const RANGES = [7, 14, 30];
 

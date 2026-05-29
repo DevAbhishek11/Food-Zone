@@ -31,6 +31,7 @@ class User extends Authenticatable
         'referral_code',
         'referred_by',
         'is_verified',
+        'onboarding_completed',
     ];
 
     protected $hidden = [
@@ -50,6 +51,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => UserRole::class,
             'status' => UserStatus::class,
+            'onboarding_completed' => 'boolean',
         ];
     }
 
@@ -111,6 +113,11 @@ class User extends Authenticatable
     public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);
+    }
+
+    public function notificationPreferences(): HasMany
+    {
+        return $this->hasMany(NotificationPreference::class);
     }
 
     public function violations(): HasMany

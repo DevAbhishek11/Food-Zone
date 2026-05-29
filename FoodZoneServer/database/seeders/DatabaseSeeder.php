@@ -16,6 +16,10 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Always seed the badge catalog — needed for the loyalty service
+        // to award badges at runtime.
+        $this->call(BadgesSeeder::class);
+
         // --- Admin ---------------------------------------------------------
         $admin = User::factory()->admin()->create([
             'name' => 'FoodZone Admin',

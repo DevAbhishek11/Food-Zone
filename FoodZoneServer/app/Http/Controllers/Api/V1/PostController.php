@@ -278,6 +278,31 @@ class PostController extends Controller
         return ApiResponse::paginated($users, UserSummaryResource::class, 'Likers loaded.');
     }
 
+    /** Open a moderation violation for a post (used by /posts/{post}/report). */
+    public function report(Request $request, Post $post): JsonResponse
+    {
+        if ($post->user_id === $request->user()->id) {
+            return ApiResponse::error('You cannot report your own post.', 422);
+        }
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:50'],
+            'detail' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        \App\Models\Violation::create([
+            'user_id' => $post->user_id,
+            'type' => $data['reason'],
+            'evidence' => $data['detail'] ?? null,
+            'severity' => 'medium',
+            'status' => 'open',
+            'subject_type' => Post::class,
+            'subject_id' => $post->id,
+            'reported_by' => $request->user()->id,
+        ]);
+
+        return ApiResponse::success(null, 'Report submitted. Thank you.', 201);
+    }
+
     // ----------------------------------------------------------------
     // Authorization helpers
     // ----------------------------------------------------------------

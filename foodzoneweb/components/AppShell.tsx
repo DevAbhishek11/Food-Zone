@@ -6,7 +6,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { useChatUnread } from "@/lib/hooks/use-chat";
 import { useUnreadCount } from "@/lib/hooks/use-notifications";
 import { useRealtime } from "@/lib/hooks/use-realtime";
-import { Bell, Bike, Home, LayoutDashboard, LogOut, MessageCircle, Receipt, Shield, Store, UserRound, UtensilsCrossed } from "lucide-react";
+import { Bell, Bike, Compass, Home, LayoutDashboard, LogOut, MessageCircle, Receipt, Shield, Store, UserRound, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ComponentType, ReactNode } from "react";
@@ -20,6 +20,7 @@ interface NavItem {
 
 const BASE_NAV: NavItem[] = [
   { href: "/feed", label: "Feed", icon: Home },
+  { href: "/explore", label: "Explore", icon: Compass },
   { href: "/vendors", label: "Order Food", icon: Store },
   { href: "/messages", label: "Messages", icon: MessageCircle, badgeKey: "chat" },
   { href: "/notifications", label: "Inbox", icon: Bell, badgeKey: "notif" },

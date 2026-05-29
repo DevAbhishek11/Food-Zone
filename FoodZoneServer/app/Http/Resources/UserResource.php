@@ -22,6 +22,7 @@ class UserResource extends JsonResource
             'dob' => $this->dob?->toDateString(),
             'email_verified' => $this->email_verified_at !== null,
             'is_verified' => (bool) $this->is_verified,
+            'onboarding_completed' => (bool) $this->onboarding_completed,
             'referral_code' => $this->referral_code,
             'profile' => new UserProfileResource($this->whenLoaded('profile')),
             'created_at' => $this->created_at?->toIso8601String(),

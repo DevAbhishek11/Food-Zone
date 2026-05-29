@@ -42,6 +42,7 @@ export interface User {
   status: string;
   email_verified: boolean;
   is_verified?: boolean;
+  onboarding_completed?: boolean;
   referral_code: string | null;
   profile?: UserProfile | null;
   is_following?: boolean;

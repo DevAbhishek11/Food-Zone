@@ -242,6 +242,29 @@ class UserController extends Controller
         return ApiResponse::success(null, 'User unblocked.');
     }
 
+    /** Open a moderation violation against a user (no content subject). */
+    public function report(Request $request, User $user): JsonResponse
+    {
+        if ($user->id === $request->user()->id) {
+            return ApiResponse::error('You cannot report yourself.', 422);
+        }
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:50'],
+            'detail' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        \App\Models\Violation::create([
+            'user_id' => $user->id,
+            'type' => $data['reason'],
+            'evidence' => $data['detail'] ?? null,
+            'severity' => 'medium',
+            'status' => 'open',
+            'reported_by' => $request->user()->id,
+        ]);
+
+        return ApiResponse::success(null, 'Report submitted. Thank you.', 201);
+    }
+
     // ----------------------------------------------------------------
 
     private function syncFollowCounts(int $followerId, int $followingId, bool $decrement = false): void

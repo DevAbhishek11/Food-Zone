@@ -45,6 +45,7 @@ export interface User {
   dob: string | null;
   email_verified: boolean;
   is_verified?: boolean;
+  onboarding_completed?: boolean;
   referral_code: string | null;
   profile?: UserProfile | null;
   created_at?: string;

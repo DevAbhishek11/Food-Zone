@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AddressController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CommentController;
+use App\Http\Controllers\Api\V1\ExploreController;
 use App\Http\Controllers\Api\V1\HashtagController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MenuCategoryController;
@@ -56,7 +57,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     /* ----------------------------------------------- Public (optional auth) */
     Route::middleware('auth.optional')->group(function () {
         Route::get('search', [SearchController::class, 'index']);
-        Route::get('explore', [PostController::class, 'explore']);
+
+        // Discovery hub — curated sections + map view.
+        Route::get('explore', [ExploreController::class, 'index']);
+        Route::get('explore/map', [ExploreController::class, 'map']);
 
         // Discovery (registered before posts/{post} so "trending" isn't treated as an id).
         Route::get('posts/trending', [PostController::class, 'trending']);
@@ -72,6 +76,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         // Discovery — registered before /vendors/{idOrSlug} so 'nearby' isn't treated as a slug.
         Route::get('vendors/nearby', [VendorController::class, 'nearby']);
         Route::get('items/trending', [VendorController::class, 'itemsTrending']);
+        Route::get('flash-deals', [\App\Http\Controllers\Api\V1\FlashDealsController::class, 'index']);
+        Route::get('leaderboard', [\App\Http\Controllers\Api\V1\LoyaltyController::class, 'leaderboard']);
         Route::get('vendors/{idOrSlug}', [VendorController::class, 'show']);
         Route::get('vendors/{idOrSlug}/menu', [VendorController::class, 'menu']);
         Route::get('vendors/{idOrSlug}/reviews', [ReviewController::class, 'index']);
@@ -112,8 +118,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('posts/{post}/save', [PostController::class, 'save']);
         Route::delete('posts/{post}/save', [PostController::class, 'unsave']);
         Route::post('posts/{post}/share', [PostController::class, 'share']);
+        Route::post('posts/{post}/report', [PostController::class, 'report']);
         Route::post('posts/{post}/comments', [CommentController::class, 'store']);
         Route::delete('comments/{comment}', [CommentController::class, 'destroy']);
+        Route::post('comments/{comment}/report', [CommentController::class, 'report']);
 
         // Stories
         Route::get('stories', [StoryController::class, 'index']);
@@ -131,6 +139,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::delete('users/{user}/follow', [UserController::class, 'unfollow']);
         Route::post('users/{user}/block', [UserController::class, 'block']);
         Route::delete('users/{user}/block', [UserController::class, 'unblock']);
+        Route::post('users/{user}/report', [UserController::class, 'report']);
 
         // Chat / DMs
         Route::get('conversations', [\App\Http\Controllers\Api\V1\ChatController::class, 'index']);
@@ -154,10 +163,21 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         // Notifications
         Route::get('notifications', [NotificationController::class, 'index']);
         Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);
+        // Preferences — must register before /notifications/{notification} so the param
+        // doesn't swallow the literal segment.
+        Route::get('notifications/preferences', [NotificationController::class, 'preferences']);
+        Route::post('notifications/preferences', [NotificationController::class, 'savePreferences']);
         Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead']);
         Route::post('notifications/read-all', [NotificationController::class, 'markAllRead']);
         Route::delete('notifications/{notification}', [NotificationController::class, 'destroy']);
         Route::delete('notifications', [NotificationController::class, 'clearAll']);
+
+        // Onboarding wizard finalisation.
+        Route::post('onboarding/complete', [\App\Http\Controllers\Api\V1\OnboardingController::class, 'complete']);
+        Route::post('onboarding/skip', [\App\Http\Controllers\Api\V1\OnboardingController::class, 'skip']);
+
+        // Loyalty + badges (caller's snapshot).
+        Route::get('me/loyalty', [\App\Http\Controllers\Api\V1\LoyaltyController::class, 'me']);
 
         // Favorites
         Route::get('favorites', [VendorController::class, 'favorites']);
@@ -249,6 +269,14 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             Route::get('vendors', [AdminController::class, 'vendors']);
             Route::put('vendors/{vendor}/approve', [AdminController::class, 'approveVendor']);
             Route::put('vendors/{vendor}/reject', [AdminController::class, 'rejectVendor']);
+
+            // ---- P32 Admin Console v3 ----
+            Route::get('violations', [AdminController::class, 'violations']);
+            Route::post('violations/{violation}/action', [AdminController::class, 'resolveViolation']);
+            Route::get('revenue', [AdminController::class, 'revenue']);
+            Route::put('vendors/{vendor}/feature', [AdminController::class, 'featureVendor']);
+            Route::post('broadcast', [AdminController::class, 'broadcast']);
+            Route::get('system-health', [AdminController::class, 'systemHealth']);
         });
     });
 });

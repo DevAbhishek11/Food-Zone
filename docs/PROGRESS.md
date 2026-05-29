@@ -5,7 +5,7 @@ delivered across all relevant tiers and verified (`php artisan test` / web `buil
 / mobile `tsc`+`expo lint`+`expo export`). Per-phase detail lives in `WORKPHASE-N.md`;
 the index is `WORKPHASES.md`.
 
-_Last updated: 2026-05-27 · Backend tests: **175** · Mobile routes: **27** · Web pages: **34** · Roadmaps: [ROADMAP.md](ROADMAP.md) (P12→P24 ✅) + **v3.0 enhancement (P25→P36, in progress)**_
+_Last updated: 2026-05-29 · Backend tests: **212** · Mobile routes: **32** · Web pages: **43** · Roadmaps: [ROADMAP.md](ROADMAP.md) (P12→P24 ✅) + **v3.0 enhancement (P25→P36 ✅ complete)**_
 
 ### v3.0 enhancement roadmap (P25–P36, from `27May2026Prompt.md`)
 - [x] **P25 — Landing page + role-separated auth**: public `/` marketing landing (hero/features/
@@ -41,10 +41,50 @@ _Last updated: 2026-05-27 · Backend tests: **175** · Mobile routes: **27** · 
   ok/low/out status), vouchers full CRUD, item analytics, daily payouts, flash-deal create;
   web `/vendor/customers` + `/vendor/inventory` + `/vendor/vouchers` + nav tabs. +7 tests.
   _(Backend + Web; mobile out of scope)_
-- [ ] P32 admin v3 · P33 explore · P34 notifications/onboarding ·
-  P35 performance · P36 advanced features. _(+ deferred: post polls, story-highlight UI,
-  voice/file messages UI, starred-messages page, user reports → P32, sticky category tab bar,
-  Kanban orders board, satisfaction donut, flash-deal create UI)_
+- [x] **P32 — Admin console v3**: reuses existing `violations`/`violation_actions` as unified
+  reports queue; `POST /{posts,comments,users}/{id}/report` opens violations; admin list/resolve
+  (dismiss/warn/suspend/ban/remove_content) writes ViolationAction + AuditLog; `/admin/revenue`
+  breakdown; `PUT /admin/vendors/{id}/feature` toggle; `POST /admin/broadcast` segmented system
+  notify; `GET /admin/system-health` wraps HealthController; web `/admin/reports` queue +
+  resolve dialog and `/admin/broadcast` composer + preview; +8 tests. _(Backend + Web)_
+- [x] **P33 — Explore & discovery**: `ExploreController::index` returns a curated payload
+  (`trending_posts` 6 h weighted, `trending_vendors` with `order_delta` % vs prior window,
+  `trending_hashtags` runtime-regex, `trending_items` 24 h, `suggested_users` friends-of-friends
+  with `popular` fallback, `nearby_vendors` PHP-Haversine when lat/lng given); `GET /explore/map`
+  feeds Leaflet view. Web `/explore`: hero search + category chips + sections + dynamic Leaflet
+  map (OpenStreetMap) + nav entry. Mobile `(tabs)/explore.tsx`: FlashList v2 `masonry` prop +
+  segmented control + expo-location nearby. +9 tests. _(Backend + Web + Mobile)_
+- [x] **P34 — Notifications grouping + onboarding wizard**: migration adds
+  `users.onboarding_completed` + `notification_preferences (user_id,type,channel,enabled)`;
+  `GET /notifications?grouped=1` returns Today/This Week/Earlier buckets, `?type=` filter;
+  `GET/POST /notifications/preferences` defaulted matrix w/ sparse overrides; new types
+  `story_mention`/`post_tagged`/`vendor_offer`/`flash_deal`; `POST /onboarding/{complete,skip}`
+  upsert profile + create follows + flip flag; `UserResource` exposes flag. Web `/notifications`
+  grouped sections + per-type icons + hover mark-as-read + inline action buttons,
+  `/notifications/preferences` matrix, `/onboarding` 4-step wizard, login/register reroute via
+  `redirectAfterLogin`. Mobile grouped inbox + `/onboarding` screen + `_layout` gating. +9 tests.
+  _(Backend + Web + Mobile)_
+- [x] **P35 — Performance**: migration adds 5 composite indexes for hot scan paths
+  (`orders(vendor_id,created_at)`, `orders(user_id,created_at)`,
+  `notifications(user_id,created_at)`, `follows(follower_id,status)`,
+  `post_comments(post_id,created_at)`); `Cache::remember` on `vendor:{id}:menu` (60 s)
+  and `explore:shared` (global trending sections, 60 s); Recharts code-split via
+  `next/dynamic({ssr:false})` on `/admin` + `/vendor`; 4 hot mobile lists migrated
+  to FlashList v2 (`vendors`, `orders`, `messages/index`, `search`). +3 tests.
+  _(Backend + Web + Mobile)_
+- [x] **P36 — Advanced features**: migration adds `user_loyalty`, `loyalty_transactions`,
+  `badges`, `user_badges`; `LoyaltyService::awardForDelivery` idempotent (1 pt per ₹10 +
+  50 pt first-order bonus, tier bronze/silver/gold/platinum); `checkBadges` awards
+  `first_order`/`order_century`/`social_butterfly`/`food_explorer`; `OrderController`
+  hooks into delivered transitions; `GET /me/loyalty` snapshot + `GET /leaderboard`
+  (points/orders/reviews, top 50) + public `GET /flash-deals`. Web `/settings`
+  consolidation + `/leaderboard` + `LoyaltyCard` on `/profile`. Mobile `settings.tsx`
+  + `leaderboard.tsx` + `LoyaltyCard` on profile tab. +8 tests. _(Backend + Web + Mobile)_
+
+**v3.0 enhancement roadmap (P25–P36) — complete.** 🎉
+  _(+ deferred: post polls, story-highlight UI, voice/file messages UI, starred-messages page,
+  sticky category tab bar, Kanban orders board, satisfaction donut, flash-deal create UI,
+  /admin/revenue chart page, system-health widget)_
 
 
 ---
