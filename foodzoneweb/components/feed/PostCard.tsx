@@ -3,14 +3,17 @@
 import { Avatar } from "@/components/ui/Avatar";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { useAuthStore } from "@/lib/auth-store";
 import { timeAgo } from "@/lib/format";
 import { useSharePost, useToggleSave } from "@/lib/hooks/use-feed";
 import { toast } from "@/lib/toast-store";
 import type { Post } from "@/lib/types";
-import { Bookmark, Heart, MessageCircle, Share2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Bookmark, Heart, LinkIcon, MessageCircle, MoreHorizontal, Share2, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { CommentSection } from "./CommentSection";
+import { MediaGrid } from "./MediaGrid";
 
 /** Linkify #hashtags and @mentions inside post body text. */
 function RichBody({ text }: { text: string }) {
@@ -46,9 +49,49 @@ export function PostCard({ post, defaultShowComments = false }: { post: Post; de
   const [shares, setShares] = useState(post.shares_count);
   const [showComments, setShowComments] = useState(defaultShowComments);
   const [busy, setBusy] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [removed, setRemoved] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const me = useAuthStore((s) => s.user);
+  const isOwner = me != null && (me.id === post.author.id || me.role === "admin" || me.role === "super_admin");
+  const qc = useQueryClient();
 
   const toggleSave = useToggleSave();
   const sharePost = useSharePost();
+
+  // Close the "…" menu on outside click.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [menuOpen]);
+
+  const copyLink = async () => {
+    setMenuOpen(false);
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/posts/${post.id}`);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Could not copy link.");
+    }
+  };
+
+  const deletePost = async () => {
+    setMenuOpen(false);
+    if (!window.confirm("Delete this post? This cannot be undone.")) return;
+    try {
+      await api.del(`/posts/${post.id}`);
+      setRemoved(true);
+      toast.success("Post deleted.");
+      void qc.invalidateQueries({ queryKey: ["feed"] });
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not delete post.");
+    }
+  };
 
   const toggleLike = async () => {
     if (busy) return;
@@ -94,6 +137,8 @@ export function PostCard({ post, defaultShowComments = false }: { post: Post; de
     }
   };
 
+  if (removed) return null;
+
   return (
     <article className="overflow-hidden rounded-card border border-line bg-bg-soft">
       <header className="flex items-center gap-3 p-4">
@@ -115,6 +160,29 @@ export function PostCard({ post, defaultShowComments = false }: { post: Post; de
         {post.source === "suggested" && (
           <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] font-medium uppercase text-muted">Suggested</span>
         )}
+
+        <div ref={menuRef} className="relative">
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Post options"
+            aria-expanded={menuOpen}
+            className="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface hover:text-content"
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-9 z-20 w-44 overflow-hidden rounded-lg border border-line bg-bg-overlay shadow-md">
+              <button onClick={copyLink} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-content transition-colors hover:bg-surface">
+                <LinkIcon className="h-4 w-4 text-muted" /> Copy link
+              </button>
+              {isOwner && (
+                <button onClick={deletePost} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-danger transition-colors hover:bg-danger/10">
+                  <Trash2 className="h-4 w-4" /> Delete post
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </header>
 
       {post.body && (
@@ -123,14 +191,7 @@ export function PostCard({ post, defaultShowComments = false }: { post: Post; de
         </p>
       )}
 
-      {post.media.length > 0 && (
-        <div className={cn("grid gap-0.5", post.media.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
-          {post.media.slice(0, 4).map((m) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={m.id} src={m.url} alt="" className="max-h-96 w-full object-cover" loading="lazy" />
-          ))}
-        </div>
-      )}
+      <MediaGrid media={post.media} />
 
       <footer className="flex items-center gap-1 border-t border-line px-2 py-1">
         <button

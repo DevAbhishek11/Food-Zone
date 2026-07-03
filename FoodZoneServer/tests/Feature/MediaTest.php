@@ -45,7 +45,7 @@ class MediaTest extends TestCase
         Sanctum::actingAs(User::factory()->create());
 
         $this->postJson('/api/v1/media', [
-            'file' => UploadedFile::fake()->image('huge.jpg')->size(6000), // 6MB > 5MB
+            'file' => UploadedFile::fake()->image('huge.jpg')->size(12000), // 12MB > 10MB cap
         ])->assertStatus(422)->assertJsonValidationErrorFor('file');
     }
 

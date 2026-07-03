@@ -111,15 +111,18 @@ class AdminController extends Controller
             $usersSeries[] = ['date' => $date, 'count' => (int) ($userRows[$date] ?? 0)];
         }
 
+        // Plain arrays only — this payload is cached, and serialized Collections
+        // can unserialize as __PHP_Incomplete_Class and break the JSON shape.
         $statusDistribution = Order::selectRaw('status, COUNT(*) as count')
             ->groupBy('status')->get()
-            ->map(fn ($r) => ['status' => $r->status, 'count' => (int) $r->count]);
+            ->map(fn ($r) => ['status' => $r->status, 'count' => (int) $r->count])
+            ->values()->all();
 
         $topVendors = Vendor::orderByDesc('orders_count')->limit(5)->get()
             ->map(fn ($v) => [
                 'id' => $v->id, 'name' => $v->name,
                 'orders_count' => (int) $v->orders_count, 'rating_avg' => (float) $v->rating_avg,
-            ]);
+            ])->values()->all();
 
         return [
             'range_days' => $days,

@@ -1,5 +1,6 @@
 "use client";
 
+import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useUploadMedia } from "@/lib/hooks/use-media";
 import { toast } from "@/lib/toast-store";
@@ -32,8 +33,8 @@ export function ImageUpload({
     try {
       const media = await upload.mutateAsync({ file, category });
       onChange(media.url);
-    } catch {
-      toast.error("Upload failed. Try a smaller image.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? (e.fieldError("file") ?? e.message) : "Upload failed. Try a smaller image.");
     }
   };
 

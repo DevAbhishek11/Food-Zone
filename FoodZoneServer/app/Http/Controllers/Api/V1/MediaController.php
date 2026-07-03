@@ -37,6 +37,18 @@ class MediaController extends Controller
             $url = url($url);
         }
 
+        // Local-disk URLs are minted from APP_URL, which mobile emulators/devices
+        // can't reach (localhost = the device itself). Rebuild from the host the
+        // client actually used (e.g. 10.0.2.2:8000 or the LAN IP) so the returned
+        // URL is loadable by whoever uploaded it.
+        if ($disk === 'public') {
+            $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+            $urlHost = parse_url($url, PHP_URL_HOST);
+            if ($urlHost === $appHost) {
+                $url = $request->getSchemeAndHttpHost().parse_url($url, PHP_URL_PATH);
+            }
+        }
+
         return ApiResponse::success([
             'url' => $url,
             'path' => $path,

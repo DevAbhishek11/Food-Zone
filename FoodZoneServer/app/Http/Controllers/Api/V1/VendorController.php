@@ -163,11 +163,13 @@ class VendorController extends Controller
                 ->whereNull('category_id')->where('is_available', true)
                 ->with(['variants', 'addons', 'images'])->get();
 
+            // ->all(): cached payloads must hold plain arrays, not Collections.
             $popularIds = $vendor->items()
                 ->where('is_available', true)
                 ->orderByDesc('orders_count')
                 ->limit(5)
-                ->pluck('id');
+                ->pluck('id')
+                ->all();
 
             return [
                 'categories' => MenuCategoryResource::collection($categories)->resolve(),
@@ -390,15 +392,18 @@ class VendorController extends Controller
             ];
         }
 
+        // Plain arrays only — this payload is cached, and serialized Collections
+        // can unserialize as __PHP_Incomplete_Class and break the JSON shape.
         $statusDistribution = $vendor->orders()->selectRaw('status, COUNT(*) as count')
             ->groupBy('status')->get()
-            ->map(fn ($r) => ['status' => $r->status, 'count' => (int) $r->count]);
+            ->map(fn ($r) => ['status' => $r->status, 'count' => (int) $r->count])
+            ->values()->all();
 
         $topItems = $vendor->items()->orderByDesc('orders_count')->limit(5)->get()
             ->map(fn ($it) => [
                 'id' => $it->id, 'name' => $it->name,
                 'orders_count' => (int) $it->orders_count, 'rating_avg' => (float) $it->rating_avg,
-            ]);
+            ])->values()->all();
 
         return [
             'range_days' => $days,

@@ -16,9 +16,9 @@ return [
 
     'disk' => env('MEDIA_DISK', 'public'),
 
-    // Max upload size in kilobytes.
-    'max_kb' => (int) env('MEDIA_MAX_KB', 5120),
+    // Max upload size in kilobytes (spec: 10MB per image).
+    'max_kb' => (int) env('MEDIA_MAX_KB', 10240),
 
     // Allowed image extensions.
-    'mimes' => ['jpeg', 'jpg', 'png', 'webp', 'gif'],
+    'mimes' => ['jpeg', 'jpg', 'png', 'webp', 'gif', 'avif'],
 ];
