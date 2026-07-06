@@ -35,10 +35,10 @@ export default function VendorDashboardPage() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <StatCard icon={<Clock className="h-5 w-5 text-warning" />} label="Pending" value={String(stats.pending_orders)} />
-              <StatCard icon={<ShoppingBag className="h-5 w-5 text-info" />} label="Orders today" value={String(stats.orders_today)} />
-              <StatCard icon={<Wallet className="h-5 w-5 text-success" />} label="Revenue today" value={money(stats.revenue_today)} />
-              <StatCard icon={<Star className="h-5 w-5 text-warning" />} label="Rating" value={stats.rating_avg > 0 ? `${stats.rating_avg.toFixed(1)} (${stats.rating_count})` : "—"} />
+              <StatCard icon={<Clock className="h-5 w-5" />} tone="warning" label="Pending" value={String(stats.pending_orders)} />
+              <StatCard icon={<ShoppingBag className="h-5 w-5" />} tone="info" label="Orders today" value={String(stats.orders_today)} />
+              <StatCard icon={<Wallet className="h-5 w-5" />} tone="success" label="Revenue today" value={money(stats.revenue_today)} />
+              <StatCard icon={<Star className="h-5 w-5" />} tone="warning" label="Rating" value={stats.rating_avg > 0 ? `${stats.rating_avg.toFixed(1)} (${stats.rating_count})` : "—"} />
             </div>
 
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -105,14 +105,23 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
   );
 }
 
-function StatCard({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
+const STAT_TONES = {
+  success: "bg-success/15 text-success",
+  info: "bg-info/15 text-info",
+  warning: "bg-warning/15 text-warning",
+  muted: "bg-surface text-muted",
+} as const;
+
+function StatCard({ icon, label, value, tone = "muted" }: {
+  icon?: React.ReactNode; label: string; value: string; tone?: keyof typeof STAT_TONES;
+}) {
   return (
-    <div className="rounded-card border border-line bg-bg-soft p-4">
-      <div className="flex items-center gap-2 text-muted">
-        {icon}
-        <span className="text-xs">{label}</span>
+    <div className="rounded-card border border-line bg-bg-soft p-4 transition-colors hover:border-border-strong">
+      <div className="flex items-center gap-2.5">
+        {icon && <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${STAT_TONES[tone]}`}>{icon}</span>}
+        <span className="text-xs text-muted">{label}</span>
       </div>
-      <p className="mt-1 font-display text-2xl font-semibold">{value}</p>
+      <p className="mt-2 font-display text-2xl font-semibold">{value}</p>
     </div>
   );
 }

@@ -31,6 +31,7 @@ export interface AdminStats {
   posts_total: number;
   revenue_today: number;
   commission_today: number;
+  reports_open: number;
 }
 
 export function useAdminDashboard() {
@@ -75,7 +76,8 @@ export function useUserModeration() {
       api.post<{ affected: number }>("/admin/users/bulk", body),
     onSuccess: invalidate,
   });
-  return { ban, suspend, unban, bulk };
+  const verify = useMutation({ mutationFn: (id: number) => api.put(`/admin/users/${id}/verify`), onSuccess: invalidate });
+  return { ban, suspend, unban, bulk, verify };
 }
 
 export function useAdminOrders(filters: { status?: string; q?: string; payment_status?: string }) {
@@ -104,5 +106,11 @@ export function useVendorModeration() {
   };
   const approve = useMutation({ mutationFn: (id: number) => api.put(`/admin/vendors/${id}/approve`), onSuccess: invalidate });
   const reject = useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => api.put(`/admin/vendors/${id}/reject`, { reason }), onSuccess: invalidate });
-  return { approve, reject };
+  // Platform controls: commission rate, featured flag, force open/close.
+  const update = useMutation({
+    mutationFn: ({ id, ...patch }: { id: number; commission_rate?: number; is_featured?: boolean; is_open?: boolean }) =>
+      api.patch(`/admin/vendors/${id}`, patch),
+    onSuccess: invalidate,
+  });
+  return { approve, reject, update };
 }

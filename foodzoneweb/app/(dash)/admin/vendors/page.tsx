@@ -64,9 +64,30 @@ export default function AdminVendorsPage() {
 }
 
 function VendorRow({ vendor, statusStyle }: { vendor: Vendor; statusStyle: string }) {
-  const { approve, reject } = useVendorModeration();
+  const { approve, reject, update } = useVendorModeration();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
+  const [editingRate, setEditingRate] = useState(false);
+  const [rate, setRate] = useState(String(vendor.commission_rate));
+
+  const patch = async (fields: { commission_rate?: number; is_featured?: boolean; is_open?: boolean }, okMsg: string) => {
+    try {
+      await update.mutateAsync({ id: vendor.id, ...fields });
+      toast.success(okMsg);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed.");
+    }
+  };
+
+  const saveRate = async () => {
+    const value = Number(rate);
+    if (Number.isNaN(value) || value < 0 || value > 50) {
+      toast.error("Commission must be between 0 and 50%.");
+      return;
+    }
+    await patch({ commission_rate: value }, `Commission set to ${value}%`);
+    setEditingRate(false);
+  };
 
   const doApprove = async () => {
     try {
@@ -102,6 +123,56 @@ function VendorRow({ vendor, statusStyle }: { vendor: Vendor; statusStyle: strin
         </div>
         <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium capitalize", statusStyle)}>{vendor.status}</span>
       </div>
+
+      {vendor.status === "approved" && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+          {/* Commission */}
+          {editingRate ? (
+            <span className="flex items-center gap-1.5">
+              <input
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                inputMode="decimal"
+                className="h-8 w-16 rounded-lg border border-line bg-bg px-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/60"
+                aria-label="Commission rate %"
+              />
+              <Button size="xs" loading={update.isPending} onClick={saveRate}>Save</Button>
+              <Button size="xs" variant="ghost" onClick={() => { setEditingRate(false); setRate(String(vendor.commission_rate)); }}>Cancel</Button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setEditingRate(true)}
+              className="rounded-full border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-brand/40 hover:text-content"
+            >
+              Commission: <span className="font-semibold text-content">{vendor.commission_rate}%</span>
+            </button>
+          )}
+
+          {/* Featured toggle */}
+          <button
+            onClick={() => patch({ is_featured: !vendor.is_featured }, vendor.is_featured ? "Removed from featured" : "Featured on homepage")}
+            aria-pressed={vendor.is_featured}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs transition-colors",
+              vendor.is_featured ? "border-brand/50 bg-brand/15 text-brand" : "border-line text-muted hover:text-content",
+            )}
+          >
+            ★ Featured
+          </button>
+
+          {/* Force open/close */}
+          <button
+            onClick={() => patch({ is_open: !vendor.is_open }, vendor.is_open ? "Store force-closed" : "Store reopened")}
+            aria-pressed={vendor.is_open}
+            className={cn(
+              "ml-auto rounded-full border px-3 py-1 text-xs transition-colors",
+              vendor.is_open ? "border-success/50 bg-success/10 text-success" : "border-danger/50 bg-danger/10 text-danger",
+            )}
+          >
+            {vendor.is_open ? "● Open" : "● Closed"}
+          </button>
+        </div>
+      )}
 
       {vendor.status === "pending" && (
         <div className="mt-3 border-t border-line pt-3">

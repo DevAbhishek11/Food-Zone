@@ -15,6 +15,10 @@ class NotificationsV3Test extends TestCase
 
     public function test_grouped_index_buckets_by_today_this_week_earlier(): void
     {
+        // Freeze mid-week: on Mondays "start of week + 1h" would fall in the
+        // "today" bucket and make the assertion date-dependent.
+        $this->travelTo(now()->startOfWeek()->addDays(3)->setTime(12, 0));
+
         $me = User::factory()->create();
 
         $mk = function (User $me, $when) {

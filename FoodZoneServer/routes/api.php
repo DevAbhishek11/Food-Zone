@@ -275,6 +275,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             Route::post('violations/{violation}/action', [AdminController::class, 'resolveViolation']);
             Route::get('revenue', [AdminController::class, 'revenue']);
             Route::put('vendors/{vendor}/feature', [AdminController::class, 'featureVendor']);
+            Route::patch('vendors/{vendor}', [AdminController::class, 'updateVendor']);
+            Route::put('users/{user}/verify', [AdminController::class, 'verifyUser']);
             Route::post('broadcast', [AdminController::class, 'broadcast']);
             Route::get('system-health', [AdminController::class, 'systemHealth']);
         });

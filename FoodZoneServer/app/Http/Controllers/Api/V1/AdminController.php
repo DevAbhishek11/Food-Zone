@@ -66,6 +66,7 @@ class AdminController extends Controller
                 ->where('status', OrderStatus::Delivered->value)->sum('total'), 2),
             'commission_today' => round((float) Order::where('created_at', '>=', $today)
                 ->where('status', OrderStatus::Delivered->value)->sum('commission'), 2),
+            'reports_open' => Violation::where('status', 'open')->count(),
         ], 'Dashboard metrics.');
     }
 
@@ -425,6 +426,55 @@ class AdminController extends Controller
         $this->audit->log($request->user(), $vendor->is_featured ? 'vendor.featured' : 'vendor.unfeatured', $vendor);
 
         return ApiResponse::success(['is_featured' => (bool) $vendor->is_featured], 'Toggled.');
+    }
+
+    /**
+     * Platform-level vendor controls: commission rate, featured flag,
+     * force open/close. Each change is audited; the vendor is notified.
+     */
+    public function updateVendor(Request $request, Vendor $vendor): JsonResponse
+    {
+        $data = $request->validate([
+            'commission_rate' => ['sometimes', 'numeric', 'min:0', 'max:50'],
+            'is_featured' => ['sometimes', 'boolean'],
+            'is_open' => ['sometimes', 'boolean'],
+        ]);
+
+        if ($data === []) {
+            return ApiResponse::error('Nothing to update.', 422);
+        }
+
+        $before = $vendor->only(array_keys($data));
+        $vendor->update($data);
+        $this->audit->log($request->user(), 'vendor.updated', $vendor, [
+            'before' => $before, 'after' => $data,
+        ]);
+
+        if (array_key_exists('commission_rate', $data)) {
+            $this->notifications->notify($vendor->user_id, 'system', 'Commission rate updated',
+                "Your platform commission rate is now {$data['commission_rate']}%.");
+        }
+        if (array_key_exists('is_open', $data) && ! $data['is_open']) {
+            $this->notifications->notify($vendor->user_id, 'system', 'Store closed by FoodZone',
+                'Your store was closed by platform administration. Contact support for details.');
+        }
+
+        return ApiResponse::success(new VendorResource($vendor->fresh()), 'Vendor updated.');
+    }
+
+    /** Manually mark a user's email as verified (support flow). */
+    public function verifyUser(Request $request, User $user): JsonResponse
+    {
+        if ($user->email_verified_at !== null) {
+            return ApiResponse::error('User is already verified.', 422);
+        }
+
+        $user->forceFill(['email_verified_at' => now()])->save();
+        $this->notifications->notify($user->id, 'system', 'Account verified',
+            'Your account has been verified by our team. Enjoy FoodZone!');
+        $this->audit->log($request->user(), 'user.verified', $user);
+
+        return ApiResponse::success(new UserResource($user->fresh()), 'User verified.');
     }
 
     /** Send a system-wide notification to all users or a filtered segment. */

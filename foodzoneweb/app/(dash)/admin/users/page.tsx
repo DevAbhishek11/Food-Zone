@@ -30,7 +30,7 @@ export default function AdminUsersPage() {
   const [bulkDays, setBulkDays] = useState(7);
   const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useAdminUsers({ q: q || undefined, status: status || undefined });
-  const { ban, suspend, unban, bulk } = useUserModeration();
+  const { ban, suspend, unban, bulk, verify } = useUserModeration();
 
   const users = useMemo(() => data?.pages.flatMap((p) => p.data) ?? [], [data]);
   const selectable = users.filter((u) => !isAdminRole(u));
@@ -133,7 +133,7 @@ export default function AdminUsersPage() {
                 statusStyle={STATUS_STYLE[u.status] ?? ""}
                 selected={selected.has(u.id)}
                 onToggle={() => toggle(u.id)}
-                mod={{ ban, suspend, unban }}
+                mod={{ ban, suspend, unban, verify }}
               />
             ))}
             {hasNextPage && (
@@ -148,7 +148,7 @@ export default function AdminUsersPage() {
   );
 }
 
-type Mod = Pick<ReturnType<typeof useUserModeration>, "ban" | "suspend" | "unban">;
+type Mod = Pick<ReturnType<typeof useUserModeration>, "ban" | "suspend" | "unban" | "verify">;
 
 function UserRow({ user, statusStyle, selected, onToggle, mod }: {
   user: User; statusStyle: string; selected: boolean; onToggle: () => void; mod: Mod;
@@ -174,9 +174,17 @@ function UserRow({ user, statusStyle, selected, onToggle, mod }: {
       </div>
       <span className="rounded-full bg-surface px-2 py-0.5 text-xs capitalize text-muted">{user.role}</span>
       <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium capitalize", statusStyle)}>{user.status}</span>
+      {!user.email_verified && (
+        <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning">Unverified</span>
+      )}
 
       {!isAdmin && (
         <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+          {!user.email_verified && (
+            <Button size="sm" variant="outline" loading={mod.verify.isPending} onClick={() => run(() => mod.verify.mutateAsync(user.id), "User verified")}>
+              Verify
+            </Button>
+          )}
           {user.status === "active" ? (
             <>
               <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="h-8 rounded-lg border border-line bg-bg px-2 text-xs focus:outline-none">

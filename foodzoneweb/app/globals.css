@@ -8,48 +8,43 @@
  * semantic *-bg, brand-light/dark/glow). Never hardcode colours — use tokens.
  */
 @theme {
-  /* Brand — "mango" warmth from the FoodZone brand board (UIExample). */
-  --color-brand: #ff7a1a;
-  --color-brand-hover: #ff8c3a;
-  --color-brand-light: #ffc168;
-  --color-brand-dark: #e56700;
-  --color-brand-glow: rgba(255, 122, 26, 0.25);
+  /* Brand — FoodZone orange (matches the mobile app tokens). */
+  --color-brand: #ff6b35;
+  --color-brand-hover: #ff7f50;
+  --color-brand-light: #ff8c5a;
+  --color-brand-dark: #e55a22;
+  --color-brand-glow: rgba(255, 107, 53, 0.25);
 
-  /* Secondary accents */
-  --color-wine: #8a2645;
-  --color-wine-light: #c24a72;
-  --color-olive: #93a85e;
-
-  /* Backgrounds — warm espresso browns instead of neutral zinc. */
-  --color-bg: #14100d;          /* alias of bg-base (espresso) */
-  --color-bg-base: #14100d;
-  --color-bg-soft: #1b1510;     /* alias of bg-elevated */
-  --color-bg-elevated: #1b1510;
-  --color-bg-overlay: #22190f;
-  --color-bg-card: #22190f;
-  --color-bg-hover: #2a2015;
+  /* Backgrounds — deep neutral dark (true dark theme). */
+  --color-bg: #0a0a0c;          /* alias of bg-base */
+  --color-bg-base: #0a0a0c;
+  --color-bg-soft: #111114;     /* alias of bg-elevated */
+  --color-bg-elevated: #111114;
+  --color-bg-overlay: #17171b;
+  --color-bg-card: #17171b;
+  --color-bg-hover: #1e1e23;
 
   /* Surfaces */
-  --color-surface: #22190f;     /* alias → card */
-  --color-surface-hover: #2a2015;
-  --color-surface-1: #2f2517;
-  --color-surface-2: #3d2f1d;
-  --color-surface-3: #4c3b26;
+  --color-surface: #17171b;     /* alias → card */
+  --color-surface-hover: #1e1e23;
+  --color-surface-1: #232329;
+  --color-surface-2: #2e2e36;
+  --color-surface-3: #3b3b44;
 
-  /* Text — warm ivory instead of pure white. */
-  --color-content: #f7f1e6;     /* alias of text-primary (ivory) */
-  --color-muted: #bba98f;       /* alias of text-secondary */
-  --color-text-primary: #f7f1e6;
-  --color-text-secondary: #bba98f;
-  --color-text-tertiary: #8d7c64;
-  --color-text-disabled: #5c4f3d;
-  --color-text-inverse: #14100d;
+  /* Text */
+  --color-content: #f5f5f7;     /* alias of text-primary */
+  --color-muted: #a3a3ad;       /* alias of text-secondary */
+  --color-text-primary: #f5f5f7;
+  --color-text-secondary: #a3a3ad;
+  --color-text-tertiary: #74747e;
+  --color-text-disabled: #55555e;
+  --color-text-inverse: #0a0a0c;
 
   /* Borders */
-  --color-line: #2e2416;        /* alias → subtle border */
-  --color-border: #2e2416;
-  --color-border-strong: #453723;
-  --color-border-brand: rgba(255, 122, 26, 0.4);
+  --color-line: #242429;        /* alias → subtle border */
+  --color-border: #242429;
+  --color-border-strong: #37373f;
+  --color-border-brand: rgba(255, 107, 53, 0.4);
 
   /* Semantic */
   --color-success: #22c55e;
@@ -77,15 +72,15 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
-  --shadow-brand: 0 0 24px rgba(255, 122, 26, 0.3);
-  --shadow-glow: 0 0 40px rgba(255, 122, 26, 0.15);
+  --shadow-brand: 0 0 24px rgba(255, 107, 53, 0.3);
+  --shadow-glow: 0 0 40px rgba(255, 107, 53, 0.15);
 }
 
 /* Non-utility design tokens (gradients + motion) for component classes. */
 :root {
-  --gradient-brand: linear-gradient(135deg, #ff7a1a, #c24a72);
-  --gradient-brand-subtle: linear-gradient(135deg, rgba(255, 122, 26, 0.15), rgba(194, 74, 114, 0.08));
-  --gradient-card: linear-gradient(145deg, #22190f, #1b1510);
+  --gradient-brand: linear-gradient(135deg, #ff6b35, #ff4081);
+  --gradient-brand-subtle: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(255, 64, 129, 0.08));
+  --gradient-card: linear-gradient(145deg, #17171b, #111114);
   --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   --duration-fast: 120ms;
@@ -145,16 +140,16 @@ body {
 }
 .fz-hero {
   background:
-    radial-gradient(ellipse at 30% 40%, rgba(255, 122, 26, 0.16) 0%, transparent 55%),
-    radial-gradient(ellipse at 75% 15%, rgba(138, 38, 69, 0.22) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 40%, rgba(255, 107, 53, 0.14) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 15%, rgba(124, 77, 255, 0.1) 0%, transparent 50%),
     var(--color-bg);
   background-size: 200% 200%, 200% 200%, 100% 100%;
   animation: fz-hero-pan 18s ease-in-out infinite;
 }
 
-/* Mango→gold→wine gradient text (animated shimmer). */
+/* Orange→pink gradient text (animated shimmer). */
 .fz-gradient-text {
-  background: linear-gradient(100deg, #ff7a1a 10%, #ffc168 45%, #c24a72 75%, #ff7a1a 100%);
+  background: linear-gradient(100deg, #ff6b35 10%, #ff9a62 45%, #ff4081 75%, #ff6b35 100%);
   background-size: 250% auto;
   -webkit-background-clip: text;
   background-clip: text;

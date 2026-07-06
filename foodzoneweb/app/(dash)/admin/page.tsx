@@ -5,7 +5,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/States";
 import { money } from "@/lib/format";
 import { useAdminAnalytics, useAdminDashboard } from "@/lib/hooks/use-admin";
-import { Clock, Receipt, Store, TrendingUp, Users, Wallet } from "lucide-react";
+import { ArrowRight, Clock, Receipt, Store, TrendingUp, Users, Wallet } from "lucide-react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
@@ -35,16 +36,40 @@ export default function AdminDashboardPage() {
         ) : isError || !data ? (
           <ErrorState message="Couldn't load admin metrics. Admins only." onRetry={() => refetch()} />
         ) : (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Kpi icon={<Wallet className="h-5 w-5 text-success" />} label="Revenue today" value={money(data.revenue_today)} />
-            <Kpi icon={<Receipt className="h-5 w-5 text-info" />} label="Orders today" value={String(data.orders_today)} />
-            <Kpi icon={<TrendingUp className="h-5 w-5 text-brand" />} label="Commission today" value={money(data.commission_today)} />
-            <Kpi icon={<Clock className="h-5 w-5 text-warning" />} label="Pending vendors" value={String(data.vendors_pending)} highlight={data.vendors_pending > 0} />
-            <Kpi icon={<Users className="h-5 w-5 text-info" />} label="Users" value={String(data.users_total)} />
-            <Kpi icon={<Store className="h-5 w-5 text-success" />} label="Vendors" value={`${data.vendors_approved}/${data.vendors_total}`} />
-            <Kpi icon={<Receipt className="h-5 w-5 text-muted" />} label="Total orders" value={String(data.orders_total)} />
-            <Kpi icon={<Users className="h-5 w-5 text-muted" />} label="Posts" value={String(data.posts_total)} />
-          </div>
+          <>
+            {/* Needs attention */}
+            {(data.vendors_pending > 0 || (data.reports_open ?? 0) > 0) && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {data.vendors_pending > 0 && (
+                  <QuickAction
+                    href="/admin/vendors"
+                    tone="warning"
+                    title={`${data.vendors_pending} vendor application${data.vendors_pending === 1 ? "" : "s"} waiting`}
+                    hint="Review and approve new stores"
+                  />
+                )}
+                {(data.reports_open ?? 0) > 0 && (
+                  <QuickAction
+                    href="/admin/reports"
+                    tone="danger"
+                    title={`${data.reports_open} open report${data.reports_open === 1 ? "" : "s"}`}
+                    hint="Moderation queue needs a decision"
+                  />
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Kpi icon={<Wallet className="h-5 w-5" />} tone="success" label="Revenue today" value={money(data.revenue_today)} />
+              <Kpi icon={<Receipt className="h-5 w-5" />} tone="info" label="Orders today" value={String(data.orders_today)} />
+              <Kpi icon={<TrendingUp className="h-5 w-5" />} tone="brand" label="Commission today" value={money(data.commission_today)} />
+              <Kpi icon={<Clock className="h-5 w-5" />} tone="warning" label="Pending vendors" value={String(data.vendors_pending)} highlight={data.vendors_pending > 0} />
+              <Kpi icon={<Users className="h-5 w-5" />} tone="info" label="Users" value={String(data.users_total)} sub={`+${data.users_new_today} today`} />
+              <Kpi icon={<Store className="h-5 w-5" />} tone="success" label="Vendors" value={`${data.vendors_approved}/${data.vendors_total}`} />
+              <Kpi icon={<Receipt className="h-5 w-5" />} tone="muted" label="Total orders" value={String(data.orders_total)} />
+              <Kpi icon={<Users className="h-5 w-5" />} tone="muted" label="Posts" value={String(data.posts_total)} />
+            </div>
+          </>
         )}
 
         <div className="flex items-center justify-between">
@@ -93,15 +118,47 @@ export default function AdminDashboardPage() {
   );
 }
 
-function Kpi({ icon, label, value, highlight }: { icon: React.ReactNode; label: string; value: string; highlight?: boolean }) {
+const KPI_TONES = {
+  success: "bg-success/15 text-success",
+  info: "bg-info/15 text-info",
+  brand: "bg-brand/15 text-brand",
+  warning: "bg-warning/15 text-warning",
+  muted: "bg-surface text-muted",
+} as const;
+
+function Kpi({ icon, label, value, sub, tone = "muted", highlight }: {
+  icon: React.ReactNode; label: string; value: string; sub?: string; tone?: keyof typeof KPI_TONES; highlight?: boolean;
+}) {
   return (
-    <div className={`rounded-card border p-4 ${highlight ? "border-warning/50 bg-warning/5" : "border-line bg-bg-soft"}`}>
-      <div className="flex items-center gap-2 text-muted">
-        {icon}
-        <span className="text-xs">{label}</span>
+    <div
+      className={`rounded-card border p-4 transition-colors ${highlight ? "border-warning/50 bg-warning/5" : "border-line bg-bg-soft hover:border-border-strong"}`}
+    >
+      <div className="flex items-center gap-2.5">
+        <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${KPI_TONES[tone]}`}>{icon}</span>
+        <span className="text-xs text-muted">{label}</span>
       </div>
-      <p className="mt-1 font-display text-2xl font-semibold">{value}</p>
+      <p className="mt-2 font-display text-2xl font-semibold">
+        {value}
+        {sub && <span className="ml-2 align-middle text-xs font-normal text-success">{sub}</span>}
+      </p>
     </div>
+  );
+}
+
+const QA_TONES = {
+  warning: "border-warning/40 bg-warning/5 hover:bg-warning/10",
+  danger: "border-danger/40 bg-danger/5 hover:bg-danger/10",
+} as const;
+
+function QuickAction({ href, title, hint, tone }: { href: string; title: string; hint: string; tone: keyof typeof QA_TONES }) {
+  return (
+    <Link href={href} className={`group flex items-center justify-between gap-3 rounded-card border p-4 transition-colors ${QA_TONES[tone]}`}>
+      <div>
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="text-xs text-muted">{hint}</p>
+      </div>
+      <ArrowRight className="h-4 w-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
+    </Link>
   );
 }
 

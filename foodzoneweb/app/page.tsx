@@ -261,7 +261,7 @@ function AppDownload() {
       <div className="flex justify-center">
         <div className="fz-float h-[420px] w-[210px] rounded-[2.5rem] border-4 border-surface bg-bg-soft p-3 shadow-2xl">
           <div className="flex h-full flex-col gap-2 overflow-hidden rounded-[1.8rem] bg-bg p-3">
-            <div className="h-24 rounded-xl" style={{ background: "linear-gradient(135deg, #ff7a1a, #c24a72)" }} />
+            <div className="h-24 rounded-xl" style={{ background: "linear-gradient(135deg, #ff6b35, #ff4081)" }} />
             <div className="h-3 w-2/3 rounded-full bg-surface" />
             <div className="h-3 w-1/2 rounded-full bg-surface" />
             <div className="mt-2 h-20 rounded-xl bg-surface" />
