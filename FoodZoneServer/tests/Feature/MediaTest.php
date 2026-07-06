@@ -29,6 +29,21 @@ class MediaTest extends TestCase
         $this->assertStringStartsWith('http', $res->json('data.url'));
     }
 
+    public function test_every_client_category_is_accepted(): void
+    {
+        Storage::fake('public');
+        Sanctum::actingAs(User::factory()->create());
+
+        // Categories the web + mobile clients actually send. 'story' was
+        // missing from the whitelist once, silently breaking story uploads.
+        foreach (['avatar', 'cover', 'post', 'story', 'vendor', 'menu', 'misc'] as $category) {
+            $this->postJson('/api/v1/media', [
+                'file' => UploadedFile::fake()->image("{$category}.jpg", 100, 100),
+                'category' => $category,
+            ])->assertCreated();
+        }
+    }
+
     public function test_upload_rejects_non_images(): void
     {
         Storage::fake('public');

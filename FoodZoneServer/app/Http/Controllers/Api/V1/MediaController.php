@@ -23,7 +23,7 @@ class MediaController extends Controller
 
         $request->validate([
             'file' => ['required', 'file', 'image', "mimes:{$mimes}", "max:{$maxKb}"],
-            'category' => ['nullable', Rule::in(['avatar', 'cover', 'post', 'vendor', 'menu', 'misc'])],
+            'category' => ['nullable', Rule::in(['avatar', 'cover', 'post', 'story', 'vendor', 'menu', 'misc'])],
         ]);
 
         $category = $request->input('category', 'misc');
