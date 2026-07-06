@@ -112,7 +112,7 @@ function StatCard({ icon, label, value }: { icon?: React.ReactNode; label: strin
         {icon}
         <span className="text-xs">{label}</span>
       </div>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
+      <p className="mt-1 font-display text-2xl font-semibold">{value}</p>
     </div>
   );
 }

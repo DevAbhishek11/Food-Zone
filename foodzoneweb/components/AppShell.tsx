@@ -77,7 +77,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand">
             <UtensilsCrossed className="h-5 w-5 text-white" />
           </span>
-          <span className="text-lg font-semibold">FoodZone</span>
+          <span className="font-display text-xl font-semibold tracking-tight">FoodZone</span>
         </Link>
 
         <nav className="flex flex-1 flex-col gap-1">

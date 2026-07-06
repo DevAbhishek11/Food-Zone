@@ -16,9 +16,9 @@ import {
   YAxis,
 } from "recharts";
 
-const AXIS = "#9ca3af";
-const GRID = "#374151";
-const tooltipStyle = { backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: 8, color: "#f9fafb", fontSize: 12 };
+const AXIS = "#bba98f";
+const GRID = "#2e2416";
+const tooltipStyle = { backgroundColor: "#22190f", border: "1px solid #453723", borderRadius: 8, color: "#f7f1e6", fontSize: 12 };
 const shortDate = (d: string) => d.slice(5); // MM-DD
 
 const STATUS_COLORS: Record<string, string> = {
@@ -38,15 +38,15 @@ export function RevenueChart({ data }: { data: { date: string; revenue: number }
       <AreaChart data={data} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
         <defs>
           <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ff6b35" stopOpacity={0.4} />
-            <stop offset="100%" stopColor="#ff6b35" stopOpacity={0} />
+            <stop offset="0%" stopColor="#ff7a1a" stopOpacity={0.4} />
+            <stop offset="100%" stopColor="#ff7a1a" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
         <XAxis dataKey="date" tickFormatter={shortDate} stroke={AXIS} fontSize={11} />
         <YAxis stroke={AXIS} fontSize={11} width={48} />
         <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: AXIS }} formatter={(v) => [`₹${v}`, "Revenue"]} />
-        <Area type="monotone" dataKey="revenue" stroke="#ff6b35" strokeWidth={2} fill="url(#rev)" />
+        <Area type="monotone" dataKey="revenue" stroke="#ff7a1a" strokeWidth={2} fill="url(#rev)" />
       </AreaChart>
     </ResponsiveContainer>
   );

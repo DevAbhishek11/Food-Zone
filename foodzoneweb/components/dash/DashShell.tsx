@@ -77,7 +77,7 @@ export function DashShell({
           <UtensilsCrossed className="h-5 w-5 text-white" />
         </span>
         <span className="min-w-0">
-          <span className="block text-base font-semibold leading-tight">FoodZone</span>
+          <span className="block font-display text-lg font-semibold leading-tight tracking-tight">FoodZone</span>
           <span className="block text-[11px] font-medium uppercase tracking-widest text-muted">{brand}</span>
         </span>
       </Link>

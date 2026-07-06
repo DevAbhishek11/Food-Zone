@@ -1,7 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
+
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-body",
+  subsets: ["latin"],
+});
+
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  axes: ["opsz"],
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,7 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${jakarta.variable} ${fraunces.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>

@@ -35,9 +35,9 @@ function VerifyEmailInner() {
   }, [hasParams, token, email]);
 
   return (
-    <main className="flex min-h-dvh flex-1 items-center justify-center bg-bg px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-bg-soft p-8 text-center">
-        <span className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-brand">
+    <main className="fz-hero flex min-h-dvh flex-1 items-center justify-center px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-bg-soft/80 p-8 shadow-lg backdrop-blur-xl text-center">
+        <span className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-xl fz-gradient-brand shadow-brand">
           <UtensilsCrossed className="h-6 w-6 text-white" />
         </span>
 

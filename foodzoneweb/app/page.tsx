@@ -78,7 +78,7 @@ function Hero() {
         <span className="inline-flex items-center gap-2 rounded-full border border-brand/40 bg-brand/10 px-3 py-1 text-xs font-medium text-brand">
           🎉 Now serving 2,000+ restaurants
         </span>
-        <h1 className="mt-6 text-5xl font-extrabold leading-tight sm:text-6xl md:text-7xl">
+        <h1 className="mt-6 font-display text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl">
           Where <span className="fz-gradient-text">Food</span> Meets <span className="fz-gradient-text">Community</span>
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-muted">
@@ -113,7 +113,7 @@ const FEATURES = [
 function Features() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-24">
-      <h2 className="text-center text-3xl font-bold sm:text-4xl">Everything you love, in one app</h2>
+      <h2 className="text-center font-display text-3xl font-semibold tracking-tight sm:text-4xl">Everything you love, in one app</h2>
       <div className="mt-12 grid gap-6 md:grid-cols-3">
         {FEATURES.map((f) => (
           <div
@@ -142,7 +142,7 @@ function HowItWorks() {
   return (
     <section className="border-y border-line bg-bg-soft/40 px-4 py-24">
       <div className="mx-auto max-w-3xl">
-        <h2 className="text-center text-3xl font-bold sm:text-4xl">How it works</h2>
+        <h2 className="text-center font-display text-3xl font-semibold tracking-tight sm:text-4xl">How it works</h2>
         <ol className="relative mt-12 space-y-10 border-l border-line pl-8">
           {STEPS.map((s) => (
             <li key={s.n} className="relative">
@@ -246,7 +246,7 @@ function AppDownload() {
   return (
     <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-24 md:grid-cols-2">
       <div>
-        <h2 className="text-3xl font-bold sm:text-4xl">Take FoodZone anywhere</h2>
+        <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Take FoodZone anywhere</h2>
         <p className="mt-4 text-muted">Order, post, and chat on the go. Available on iOS and Android.</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <a href="https://apps.apple.com/?utm_source=foodzone-web&utm_medium=landing" className="rounded-xl border border-line bg-surface px-5 py-3 text-sm font-medium transition-colors hover:border-brand/40">
@@ -261,7 +261,7 @@ function AppDownload() {
       <div className="flex justify-center">
         <div className="fz-float h-[420px] w-[210px] rounded-[2.5rem] border-4 border-surface bg-bg-soft p-3 shadow-2xl">
           <div className="flex h-full flex-col gap-2 overflow-hidden rounded-[1.8rem] bg-bg p-3">
-            <div className="h-24 rounded-xl" style={{ background: "linear-gradient(135deg, #ff6b35, #ff4081)" }} />
+            <div className="h-24 rounded-xl" style={{ background: "linear-gradient(135deg, #ff7a1a, #c24a72)" }} />
             <div className="h-3 w-2/3 rounded-full bg-surface" />
             <div className="h-3 w-1/2 rounded-full bg-surface" />
             <div className="mt-2 h-20 rounded-xl bg-surface" />

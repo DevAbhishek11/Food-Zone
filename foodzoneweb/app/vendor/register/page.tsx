@@ -87,10 +87,10 @@ export default function VendorRegisterPage() {
 
   if (done) {
     return (
-      <main className="flex min-h-dvh flex-1 items-center justify-center bg-bg px-4">
-        <div className="w-full max-w-md rounded-2xl border border-line bg-bg-soft p-8 text-center">
+      <main className="fz-hero flex min-h-dvh flex-1 items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl border border-line bg-bg-soft/80 p-8 shadow-lg backdrop-blur-xl text-center">
           <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-          <h1 className="mt-4 text-2xl font-semibold">Application received</h1>
+          <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight">Application received</h1>
           <p className="mt-2 text-sm text-muted">
             Thanks for applying to FoodZone! Our team reviews new stores within <b>1–2 business days</b>.
             You&apos;ll be notified once approved, and your dashboard will unlock automatically.
@@ -104,7 +104,7 @@ export default function VendorRegisterPage() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-1 items-center justify-center bg-bg px-4 py-10">
+    <main className="fz-hero flex min-h-dvh flex-1 items-center justify-center px-4 py-10">
       <div className="grid w-full max-w-4xl gap-6 lg:grid-cols-[1fr_1.2fr]">
         {/* Benefits panel (desktop) */}
         <aside className="hidden flex-col justify-center gap-6 rounded-2xl border border-warning/30 bg-gradient-to-br from-warning/10 to-transparent p-8 lg:flex">
@@ -131,7 +131,7 @@ export default function VendorRegisterPage() {
         </aside>
 
         {/* Form */}
-        <div className="rounded-2xl border border-line bg-bg-soft p-8">
+        <div className="rounded-2xl border border-line bg-bg-soft/80 p-8 shadow-lg backdrop-blur-xl">
           <h1 className="text-xl font-semibold">Create your vendor account</h1>
           <p className="mb-6 text-sm text-muted">Tell us about your business.</p>
 

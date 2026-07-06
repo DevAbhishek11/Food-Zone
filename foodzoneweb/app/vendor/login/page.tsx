@@ -43,13 +43,13 @@ export default function VendorLoginPage() {
   };
 
   return (
-    <main className="flex min-h-dvh flex-1 items-center justify-center bg-bg px-4">
+    <main className="fz-hero flex min-h-dvh flex-1 items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl border border-warning/30 bg-bg-soft p-8">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning">
             <Store className="h-6 w-6 text-black" />
           </span>
-          <h1 className="text-2xl font-semibold">Vendor Portal</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">Vendor Portal</h1>
           <p className="text-sm text-muted">Sign in to manage your store</p>
         </div>
 

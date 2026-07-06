@@ -76,13 +76,13 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="flex min-h-dvh flex-1 items-center justify-center bg-bg px-4 py-10">
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-bg-soft p-8">
+    <main className="fz-hero flex min-h-dvh flex-1 items-center justify-center px-4 py-10">
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-bg-soft/80 p-8 shadow-lg backdrop-blur-xl">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl fz-gradient-brand shadow-brand">
             <UtensilsCrossed className="h-6 w-6 text-white" />
           </span>
-          <h1 className="text-2xl font-semibold">Join FoodZone</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">Join FoodZone</h1>
           <p className="text-sm text-muted">Step {step} of 3</p>
         </div>
 

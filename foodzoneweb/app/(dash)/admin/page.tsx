@@ -100,7 +100,7 @@ function Kpi({ icon, label, value, highlight }: { icon: React.ReactNode; label: 
         {icon}
         <span className="text-xs">{label}</span>
       </div>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
+      <p className="mt-1 font-display text-2xl font-semibold">{value}</p>
     </div>
   );
 }
