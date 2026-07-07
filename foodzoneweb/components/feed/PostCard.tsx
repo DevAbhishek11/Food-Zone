@@ -9,7 +9,7 @@ import { useSharePost, useToggleSave } from "@/lib/hooks/use-feed";
 import { toast } from "@/lib/toast-store";
 import type { Post } from "@/lib/types";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bookmark, Heart, LinkIcon, MessageCircle, MoreHorizontal, Share2, Trash2 } from "lucide-react";
+import { Bookmark, Heart, LinkIcon, MessageCircle, MoreHorizontal, Pencil, Pin, Share2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { CommentSection } from "./CommentSection";
@@ -51,11 +51,38 @@ export function PostCard({ post, defaultShowComments = false }: { post: Post; de
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [removed, setRemoved] = useState(false);
+  const [pinned, setPinned] = useState(!!post.is_pinned);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const me = useAuthStore((s) => s.user);
-  const isOwner = me != null && (me.id === post.author.id || me.role === "admin" || me.role === "super_admin");
+  const isMine = me != null && me.id === post.author.id;
+  const isOwner = isMine || (me != null && (me.role === "admin" || me.role === "super_admin"));
   const qc = useQueryClient();
+
+  // Inline editing (own posts only).
+  const [editing, setEditing] = useState(false);
+  const [body, setBody] = useState(post.body ?? "");
+  const [draft, setDraft] = useState(post.body ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const saveEdit = async () => {
+    const trimmed = draft.trim();
+    if (!trimmed && post.media.length === 0) {
+      toast.error("A post needs text or a photo.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put(`/posts/${post.id}`, { body: trimmed });
+      setBody(trimmed);
+      setEditing(false);
+      toast.success("Post updated.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not update post.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const toggleSave = useToggleSave();
   const sharePost = useSharePost();
@@ -90,6 +117,18 @@ export function PostCard({ post, defaultShowComments = false }: { post: Post; de
       void qc.invalidateQueries({ queryKey: ["feed"] });
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Could not delete post.");
+    }
+  };
+
+  const togglePin = async () => {
+    setMenuOpen(false);
+    try {
+      const res = await api.put<{ is_pinned: boolean }>(`/posts/${post.id}/pin`);
+      setPinned(res.data.is_pinned);
+      toast.success(res.data.is_pinned ? "Pinned to your profile." : "Unpinned.");
+      void qc.invalidateQueries({ queryKey: ["user-posts"] });
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not pin post.");
     }
   };
 
@@ -157,6 +196,11 @@ export function PostCard({ post, defaultShowComments = false }: { post: Post; de
             {post.privacy !== "public" && ` · ${post.privacy}`}
           </p>
         </div>
+        {pinned && (
+          <span className="flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-medium uppercase text-brand">
+            <Pin className="h-3 w-3" /> Pinned
+          </span>
+        )}
         {post.source === "suggested" && (
           <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] font-medium uppercase text-muted">Suggested</span>
         )}
@@ -175,6 +219,19 @@ export function PostCard({ post, defaultShowComments = false }: { post: Post; de
               <button onClick={copyLink} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-content transition-colors hover:bg-surface">
                 <LinkIcon className="h-4 w-4 text-muted" /> Copy link
               </button>
+              {isMine && (
+                <>
+                  <button
+                    onClick={() => { setMenuOpen(false); setDraft(body); setEditing(true); }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-content transition-colors hover:bg-surface"
+                  >
+                    <Pencil className="h-4 w-4 text-muted" /> Edit post
+                  </button>
+                  <button onClick={togglePin} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-content transition-colors hover:bg-surface">
+                    <Pin className="h-4 w-4 text-muted" /> {pinned ? "Unpin from profile" : "Pin to profile"}
+                  </button>
+                </>
+              )}
               {isOwner && (
                 <button onClick={deletePost} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-danger transition-colors hover:bg-danger/10">
                   <Trash2 className="h-4 w-4" /> Delete post
@@ -185,11 +242,34 @@ export function PostCard({ post, defaultShowComments = false }: { post: Post; de
         </div>
       </header>
 
-      {post.body && (
+      {editing ? (
+        <div className="px-4 pb-3">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={3}
+            maxLength={5000}
+            autoFocus
+            className="w-full resize-none rounded-lg border border-line bg-bg px-3 py-2 text-sm text-content focus:outline-none focus:ring-2 focus:ring-brand/60"
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            <button onClick={() => setEditing(false)} className="rounded-lg px-3 py-1.5 text-sm text-muted hover:bg-surface hover:text-content">
+              Cancel
+            </button>
+            <button
+              onClick={saveEdit}
+              disabled={saving}
+              className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : body ? (
         <p className="whitespace-pre-wrap px-4 pb-3 text-sm text-content">
-          <RichBody text={post.body} />
+          <RichBody text={body} />
         </p>
-      )}
+      ) : null}
 
       <MediaGrid media={post.media} />
 

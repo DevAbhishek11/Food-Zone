@@ -17,7 +17,7 @@ import {
 } from "@/lib/hooks/use-vendor-admin";
 import { toast } from "@/lib/toast-store";
 import type { MenuItem } from "@/lib/types";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { useState } from "react";
 
 export default function VendorMenuPage() {
@@ -117,6 +117,14 @@ export default function VendorMenuPage() {
                   />
                 ) : (
                   <div key={item.id} className="flex items-center gap-3 rounded-card border border-line bg-bg-soft p-3">
+                    {item.images?.[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.images[0]} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-line object-cover" loading="lazy" />
+                    ) : (
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface text-muted">
+                        <UtensilsCrossed className="h-5 w-5" />
+                      </span>
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{item.name}</p>
                       <p className="text-xs text-muted">{money(item.price)}</p>

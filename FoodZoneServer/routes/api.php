@@ -115,6 +115,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::delete('posts/{post}', [PostController::class, 'destroy']);
         Route::post('posts/{post}/like', [PostController::class, 'like']);
         Route::delete('posts/{post}/like', [PostController::class, 'unlike']);
+        Route::put('posts/{post}/pin', [PostController::class, 'pin']);
         Route::post('posts/{post}/save', [PostController::class, 'save']);
         Route::delete('posts/{post}/save', [PostController::class, 'unsave']);
         Route::post('posts/{post}/share', [PostController::class, 'share']);

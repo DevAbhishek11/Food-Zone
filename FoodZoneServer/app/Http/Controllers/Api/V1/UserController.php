@@ -140,6 +140,7 @@ class UserController extends Controller
                     $q->orWhere('privacy', PostPrivacy::Followers->value);
                 }
             })
+            ->orderByDesc('is_pinned')
             ->latest()
             ->paginate(15);
 

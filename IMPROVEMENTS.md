@@ -13,13 +13,13 @@ Legend: 🟢 quick win (hours) · 🟡 medium (1–3 days) · 🔴 large (1 week
 | # | Feature | Why it matters | Effort |
 |---|---------|----------------|--------|
 | 1.1 | **Wallet + loyalty redemption at checkout** | Loyalty points already accrue (LoyaltyService) but users can't *spend* them — the loop is broken. Add a `wallets` table, "pay with points/credits" at checkout, refunds credited to wallet. This is the single biggest retention feature in the spec (§8.7, §13.4). | 🔴 |
-| 1.2 | **One-tap reorder** | Order history exists; a "Reorder" button that rebuilds the cart from a past order is cheap and drives repeat orders (spec §8.6). | 🟢 |
+| 1.2 | ~~One-tap reorder~~ ✅ already built (`POST /orders/{id}/reorder` + Reorder button on orders page) | — | ✅ |
 | 1.3 | **Referral program** | `users` invite code + reward both sides on first order (spec §13.3). Viral growth loop; touches signup + checkout only. | 🟡 |
 | 1.4 | **Review photos + helpful votes** | Reviews exist, vendor replies exist. Photos on reviews (media pipeline is ready) and "helpful" votes make reviews trustworthy (spec §10.4). | 🟡 |
 | 1.5 | **Saved-post collections** | Bookmarks exist but are one flat list. Named folders ("Recipes", "Date night") are a small schema addition (spec §9.4). | 🟡 |
-| 1.6 | **Post editing with history** | Posts can be created/deleted but not edited from the UI. Backend `update` exists — needs UI + `post_edits` history table (spec §9.1). | 🟢 |
+| 1.6 | **Post editing** ✅ inline editor shipped 2026-07-07 (edit-history table still todo) | Done in PostCard menu | ✅ |
 | 1.7 | **Polls in posts** | Composer already has the layout to host it; 2–4 options + duration (spec §9.1). Great engagement driver. | 🟡 |
-| 1.8 | **Pin posts to profile** | Up to 3 pinned posts (spec §9.1). `is_pinned` column already exists on posts — just needs endpoint + UI. | 🟢 |
+| 1.8 | **Pin posts to profile** ✅ shipped 2026-07-07 (`PUT /posts/{id}/pin`, max 3, pinned-first profile, badge + menu UI) | Done | ✅ |
 | 1.9 | **Story reactions & reply-to-DM** | Stories work; quick emoji react + "reply" that opens a DM thread (spec §9.2). Chat system already exists to receive them. | 🟡 |
 | 1.10 | **Follow hashtags** | Hashtag pages exist; "follow" a tag to mix its posts into the feed (spec §9.6). | 🟡 |
 
@@ -41,8 +41,8 @@ Echo being wired on both clients.
   against Razorpay sandbox. Until then everything runs on Mock.
 - 🟡 **Refund flow** — admin can't currently initiate refunds from the orders page (spec §5.6). Add
   `refunds` handling to the payment gateway contract + admin UI button with reason.
-- 🟢 **Scheduled order-acceptance timeout** — auto-cancel orders vendors don't accept within X minutes
-  (spec §6.4: 3-minute window). One scheduled command + notification.
+- ✅ **Scheduled order-acceptance timeout** — shipped 2026-07-07: `orders:cancel-stale` runs every minute,
+  window via `ORDER_ACCEPTANCE_WINDOW` (default 15 min), refunds paid orders, notifies both sides.
 - 🟡 **Delivery charges** — vendor-configurable flat/threshold-free delivery fee shown before checkout (spec §10.5).
 - 🟡 **Invoices** — downloadable PDF invoice per order (spec §8.6); `barryvdh/laravel-dompdf` + one blade template.
 
@@ -50,7 +50,7 @@ Echo being wired on both clients.
 
 - 🟡 **Payouts page** — weekly payout calculation (revenue − commission − refunds), payout history,
   CSV statement (spec §6.7). Data already exists on orders; this is mostly aggregation + UI.
-- 🟢 **Menu item photos in the list view** — items support images but the vendor menu list doesn't show them.
+- ✅ **Menu item photos in the list view** — shipped 2026-07-07 (thumbnail or placeholder per row).
 - 🟢 **CSV menu import/export** (spec §6.3) — export exists for other admin lists; reuse the csv helper.
 - 🟡 **Recipe-level inventory** — map ingredients → menu items with auto-deduction on order (spec §16.1).
   Inventory CRUD exists; the mapping table + deduction hook is the missing half.

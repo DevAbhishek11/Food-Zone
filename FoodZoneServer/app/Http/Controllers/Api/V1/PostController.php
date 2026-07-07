@@ -211,6 +211,28 @@ class PostController extends Controller
         return ApiResponse::paginated($posts, PostResource::class, 'Trending posts loaded.');
     }
 
+    /** Toggle pinning one of your own posts to your profile (max 3 pinned). */
+    public function pin(Request $request, Post $post): JsonResponse
+    {
+        if ($post->user_id !== $request->user()->id) {
+            abort(403, 'You can only pin your own posts.');
+        }
+
+        if (! $post->is_pinned) {
+            $pinned = Post::where('user_id', $request->user()->id)->where('is_pinned', true)->count();
+            if ($pinned >= 3) {
+                return ApiResponse::error('You can pin at most 3 posts. Unpin one first.', 422);
+            }
+        }
+
+        $post->update(['is_pinned' => ! $post->is_pinned]);
+
+        return ApiResponse::success(
+            ['is_pinned' => (bool) $post->is_pinned],
+            $post->is_pinned ? 'Post pinned to your profile.' : 'Post unpinned.',
+        );
+    }
+
     /** Bookmark a post. */
     public function save(Request $request, Post $post): JsonResponse
     {
