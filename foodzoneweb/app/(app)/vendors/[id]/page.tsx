@@ -12,6 +12,7 @@ import { useCartStore } from "@/lib/cart-store";
 import { money } from "@/lib/format";
 import { useCheckoutQuote, usePlaceOrder } from "@/lib/hooks/use-orders";
 import { useVendorMenu } from "@/lib/hooks/use-vendors";
+import { useWallet } from "@/lib/hooks/use-wallet";
 import { toast } from "@/lib/toast-store";
 import type { MenuItem } from "@/lib/types";
 import { ArrowLeft, Minus, Plus, Star, X } from "lucide-react";
@@ -246,6 +247,7 @@ function CartPanel({
   const cart = useCartStore();
   const placeOrder = usePlaceOrder();
   const { data: addresses } = useAddresses();
+  const { data: wallet } = useWallet();
   const [payment, setPayment] = useState<"cod" | "upi" | "card" | "wallet">(codEnabled ? "cod" : "upi");
   const [addressId, setAddressId] = useState<number | null>(null);
   const [voucherInput, setVoucherInput] = useState("");
@@ -401,8 +403,14 @@ function CartPanel({
             {codEnabled && <option value="cod">Cash on delivery</option>}
             <option value="upi">UPI</option>
             <option value="card">Card</option>
-            <option value="wallet">Wallet</option>
+            <option value="wallet">Wallet {wallet ? `(${money(wallet.balance)} available)` : ""}</option>
           </select>
+
+          {payment === "wallet" && wallet && wallet.balance < total && (
+            <p className="mt-1 text-xs text-danger">
+              Your wallet balance ({money(wallet.balance)}) doesn&apos;t cover this order.
+            </p>
+          )}
 
           {belowMin && (
             <p className="mt-2 text-xs text-warning">Add {money(minOrder - subtotal)} more to reach the minimum order.</p>
@@ -410,7 +418,7 @@ function CartPanel({
 
           <Button
             className="mt-3 w-full"
-            disabled={!isOpen || belowMin}
+            disabled={!isOpen || belowMin || (payment === "wallet" && !!wallet && wallet.balance < total)}
             loading={placeOrder.isPending}
             onClick={checkout}
           >

@@ -194,6 +194,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
 
         // Loyalty + badges (caller's snapshot).
         Route::get('me/loyalty', [\App\Http\Controllers\Api\V1\LoyaltyController::class, 'me']);
+        Route::post('loyalty/redeem', [\App\Http\Controllers\Api\V1\LoyaltyController::class, 'redeem']);
+
+        // Wallet (FoodZone Credits)
+        Route::get('wallet', [\App\Http\Controllers\Api\V1\WalletController::class, 'show']);
+        Route::get('wallet/transactions', [\App\Http\Controllers\Api\V1\WalletController::class, 'transactions']);
 
         // Favorites
         Route::get('favorites', [VendorController::class, 'favorites']);

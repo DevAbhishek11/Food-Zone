@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useLoyalty } from "@/lib/hooks/use-loyalty";
 import { useUpdateProfile } from "@/lib/hooks/use-profile";
 import { toast } from "@/lib/toast-store";
-import { BadgeCheck, Bike, ChevronRight, LogOut, Mail, MapPin, Settings, Sparkles } from "lucide-react";
+import { BadgeCheck, Bike, ChevronRight, LogOut, Mail, MapPin, Settings, Sparkles, Wallet as WalletIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -107,6 +107,15 @@ export default function ProfilePage() {
         </div>
 
         <LoyaltyCard />
+
+        <Link
+          href="/wallet"
+          className="flex items-center gap-3 rounded-card border border-line bg-bg-soft p-4 hover:bg-surface"
+        >
+          <WalletIcon className="h-5 w-5 text-muted" />
+          <span className="flex-1 text-sm font-medium">Wallet & FoodZone Credits</span>
+          <ChevronRight className="h-4 w-4 text-muted" />
+        </Link>
 
         <ProfileDetailsForm />
 

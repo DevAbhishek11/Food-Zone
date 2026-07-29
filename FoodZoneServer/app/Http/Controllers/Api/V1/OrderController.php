@@ -28,6 +28,7 @@ class OrderController extends Controller
     public function __construct(
         private NotificationService $notifications,
         private PaymentGateway $payments,
+        private \App\Services\WalletService $wallet,
     ) {}
 
     /** Place a new order. */
@@ -140,9 +141,13 @@ class OrderController extends Controller
             'payment_status' => $wasPaid ? 'refunded' : $order->payment_status,
         ]);
 
-        // Refund a captured online payment via the gateway (best-effort: the
-        // order is already marked refunded; a gateway hiccup is logged, not fatal).
-        if ($wasPaid) {
+        // Refund a captured payment (best-effort for the gateway: the order
+        // is already marked refunded; a gateway hiccup is logged, not fatal).
+        // A wallet payment never created a gateway Payment row, so it needs
+        // its own branch — otherwise the customer's money just vanishes.
+        if ($wasPaid && $order->payment_method === 'wallet') {
+            $this->wallet->credit($order->user, $order->wallet_amount, 'order_refund', $order, "Refund for cancelled order {$order->order_number}");
+        } elseif ($wasPaid) {
             $payment = $order->payments()->where('status', 'paid')->latest()->first();
             if ($payment) {
                 try {

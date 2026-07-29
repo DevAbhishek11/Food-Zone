@@ -35,6 +35,7 @@ class AdminController extends Controller
         private NotificationService $notifications,
         private AuditService $audit,
         private \App\Contracts\PaymentGateway $gateway,
+        private \App\Services\WalletService $walletService,
     ) {}
 
     /** Immutable audit trail of moderation/admin actions. */
@@ -166,30 +167,45 @@ class AdminController extends Controller
             return ApiResponse::error('This order has no captured payment to refund.', 422);
         }
 
-        $payment = $order->payments()->where('status', 'paid')->latest()->first();
-        if (! $payment) {
-            return ApiResponse::error('No captured payment found for this order.', 422);
-        }
-
-        $ok = $this->gateway->refund($payment, $data['amount'] ?? null);
-        if (! $ok) {
-            return ApiResponse::error('The payment gateway rejected the refund.', 502);
-        }
-
         $amount = $data['amount'] ?? (float) $order->total;
         $note = $amount < (float) $order->total
             ? sprintf('Partial refund of %.2f issued: %s', $amount, $data['reason'])
             : 'Refund issued: '.$data['reason'];
 
-        DB::transaction(function () use ($order, $payment, $note) {
-            $payment->update(['status' => 'refunded']);
-            $order->update(['payment_status' => 'refunded']);
-            $order->statusHistory()->create([
-                'status' => $order->status->value,
-                'changed_by' => request()->user()->id,
-                'note' => $note,
-            ]);
-        });
+        // A wallet-paid order never created a gateway Payment row (the
+        // wallet debited synchronously at checkout) — refund instantly to
+        // the wallet instead of looking for a gateway charge that isn't there.
+        if ($order->payment_method === 'wallet') {
+            DB::transaction(function () use ($order, $note, $amount) {
+                $this->walletService->credit($order->user, $amount, 'order_refund', $order, $note);
+                $order->update(['payment_status' => 'refunded']);
+                $order->statusHistory()->create([
+                    'status' => $order->status->value,
+                    'changed_by' => request()->user()->id,
+                    'note' => $note,
+                ]);
+            });
+        } else {
+            $payment = $order->payments()->where('status', 'paid')->latest()->first();
+            if (! $payment) {
+                return ApiResponse::error('No captured payment found for this order.', 422);
+            }
+
+            $ok = $this->gateway->refund($payment, $data['amount'] ?? null);
+            if (! $ok) {
+                return ApiResponse::error('The payment gateway rejected the refund.', 502);
+            }
+
+            DB::transaction(function () use ($order, $payment, $note) {
+                $payment->update(['status' => 'refunded']);
+                $order->update(['payment_status' => 'refunded']);
+                $order->statusHistory()->create([
+                    'status' => $order->status->value,
+                    'changed_by' => request()->user()->id,
+                    'note' => $note,
+                ]);
+            });
+        }
 
         $this->notifications->notify($order->user_id, 'order_status', 'Refund issued',
             "A refund for order {$order->order_number} has been processed. Reason: {$data['reason']}",

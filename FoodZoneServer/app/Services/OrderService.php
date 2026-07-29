@@ -18,7 +18,10 @@ use Illuminate\Support\Str;
 
 class OrderService
 {
-    public function __construct(private NotificationService $notifications) {}
+    public function __construct(
+        private NotificationService $notifications,
+        private WalletService $wallet,
+    ) {}
 
     /**
      * Price an order without persisting it. Returns vendor + resolved line
@@ -191,6 +194,11 @@ class OrderService
         if ($paymentMethod === 'cod' && ! $vendor->cod_enabled) {
             throw ApiException::make('This store does not accept cash on delivery.', 422);
         }
+        // Wallet is a full-payment method (not a partial top-up) — fail fast
+        // with a clear message rather than letting the order sit unpaid.
+        if ($paymentMethod === 'wallet' && $this->wallet->balanceFor($user)->balance < $total) {
+            throw ApiException::make('Insufficient wallet balance for this order.', 422);
+        }
 
         // Delivery address snapshot
         $addressSnapshot = null;
@@ -207,6 +215,8 @@ class OrderService
             $user, $vendor, $lines, $subtotal, $discount, $deliveryCharge, $tax,
             $total, $commission, $paymentMethod, $voucher, $payload, $addressId, $addressSnapshot
         ) {
+            $payingWithWallet = $paymentMethod === 'wallet';
+
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'user_id' => $user->id,
@@ -219,12 +229,20 @@ class OrderService
                 'tax' => $tax,
                 'total' => $total,
                 'commission' => $commission,
+                'wallet_amount' => $payingWithWallet ? $total : 0,
                 'payment_method' => $paymentMethod,
-                'payment_status' => 'pending',
+                // Wallet debits synchronously below, so the order is paid the
+                // instant it's placed — unlike online methods, which wait for
+                // a gateway confirm/webhook.
+                'payment_status' => $payingWithWallet ? 'paid' : 'pending',
                 'voucher_id' => $voucher?->id,
                 'notes' => $payload['notes'] ?? null,
                 'delivery_address' => $addressSnapshot,
             ]);
+
+            if ($payingWithWallet) {
+                $this->wallet->debit($user, $total, 'order_payment', $order, "Order {$order->order_number}");
+            }
 
             foreach ($lines as $line) {
                 $order->items()->create($line);

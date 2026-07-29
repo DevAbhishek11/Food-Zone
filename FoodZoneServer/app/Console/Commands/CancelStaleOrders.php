@@ -7,6 +7,7 @@ use App\Enums\OrderStatus;
 use App\Events\OrderStatusUpdated;
 use App\Models\Order;
 use App\Services\NotificationService;
+use App\Services\WalletService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,7 @@ class CancelStaleOrders extends Command
 
     protected $description = 'Cancel pending orders older than the acceptance window and refund paid ones';
 
-    public function handle(NotificationService $notifications, PaymentGateway $gateway): int
+    public function handle(NotificationService $notifications, PaymentGateway $gateway, WalletService $wallet): int
     {
         $window = (int) config('orders.acceptance_window_minutes', 15);
         if ($window <= 0) {
@@ -37,7 +38,7 @@ class CancelStaleOrders extends Command
             ->get();
 
         foreach ($stale as $order) {
-            DB::transaction(function () use ($order, $notifications, $gateway, $window) {
+            DB::transaction(function () use ($order, $notifications, $gateway, $wallet, $window) {
                 $wasPaid = $order->payment_status === 'paid';
 
                 $order->update([
@@ -47,8 +48,13 @@ class CancelStaleOrders extends Command
                     'payment_status' => $wasPaid ? 'refunded' : $order->payment_status,
                 ]);
 
-                // Refund a captured online payment (best-effort, mirrors user cancel).
-                if ($wasPaid) {
+                // Refund a captured payment (best-effort for the gateway, mirrors
+                // user cancel). A wallet payment never created a gateway Payment
+                // row (it debited synchronously at checkout), so it needs its
+                // own branch — otherwise the customer's money just vanishes.
+                if ($wasPaid && $order->payment_method === 'wallet') {
+                    $wallet->credit($order->user, $order->wallet_amount, 'order_refund', $order, "Auto-cancelled order {$order->order_number}");
+                } elseif ($wasPaid) {
                     $payment = $order->payments()->where('status', 'paid')->latest()->first();
                     if ($payment) {
                         try {

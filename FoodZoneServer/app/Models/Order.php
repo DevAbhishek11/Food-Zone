@@ -16,7 +16,7 @@ class Order extends Model
 
     protected $fillable = [
         'order_number', 'user_id', 'vendor_id', 'address_id', 'status',
-        'subtotal', 'discount', 'delivery_charge', 'tax', 'total', 'commission',
+        'subtotal', 'discount', 'delivery_charge', 'tax', 'total', 'commission', 'wallet_amount',
         'payment_method', 'payment_status', 'voucher_id', 'notes',
         'cancellation_reason', 'delivery_address',
         'delivery_partner_id', 'assigned_at', 'picked_up_at',
@@ -31,6 +31,7 @@ class Order extends Model
         'tax' => 'float',
         'total' => 'float',
         'commission' => 'float',
+        'wallet_amount' => 'float',
         'delivery_address' => 'array',
         'assigned_at' => 'datetime',
         'picked_up_at' => 'datetime',
