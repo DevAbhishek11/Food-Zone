@@ -252,6 +252,34 @@ class AdminController extends Controller
         return ApiResponse::paginated($users, UserResource::class, 'Users loaded.');
     }
 
+    /**
+     * One-stop detail panel for a user: activity summary + recent orders,
+     * posts and violations, so admins don't have to piece it together
+     * across separate screens (spec §5.2).
+     */
+    public function userDetail(User $user): JsonResponse
+    {
+        $user->load('profile');
+
+        $orders = $user->orders()->latest()->limit(10)->get(['id', 'order_number', 'status', 'total', 'created_at']);
+        $posts = $user->posts()->latest()->limit(10)->get(['id', 'body', 'privacy', 'likes_count', 'comments_count', 'created_at']);
+        $violations = $user->violations()->latest()->limit(10)->get(['id', 'type', 'severity', 'status', 'created_at']);
+
+        return ApiResponse::success([
+            'user' => new UserResource($user),
+            'stats' => [
+                'orders_count' => $user->orders()->count(),
+                'orders_total_spent' => (float) $user->orders()->where('status', OrderStatus::Delivered->value)->sum('total'),
+                'posts_count' => $user->posts()->count(),
+                'violations_count' => $user->violations()->count(),
+                'violations_open' => $user->violations()->where('status', 'open')->count(),
+            ],
+            'recent_orders' => $orders,
+            'recent_posts' => $posts,
+            'recent_violations' => $violations,
+        ], 'User detail loaded.');
+    }
+
     public function banUser(Request $request, User $user): JsonResponse
     {
         if ($user->isAdmin()) {

@@ -62,6 +62,30 @@ export function useAuditLogs(action?: string) {
   });
 }
 
+export interface UserDetail {
+  user: User;
+  stats: {
+    orders_count: number;
+    orders_total_spent: number;
+    posts_count: number;
+    violations_count: number;
+    violations_open: number;
+  };
+  recent_orders: { id: number; order_number: string; status: string; total: number; created_at: string }[];
+  recent_posts: { id: number; body: string | null; privacy: string; likes_count: number; comments_count: number; created_at: string }[];
+  recent_violations: { id: number; type: string; severity: string; status: string; created_at: string }[];
+}
+
+/** One-stop detail panel: orders, posts, violations for a single user (spec §5.2). */
+export function useAdminUserDetail(userId: number | null) {
+  return useQuery({
+    queryKey: ["admin-user-detail", userId],
+    queryFn: () => api.get<UserDetail>(`/admin/users/${userId}`),
+    select: (e) => e.data,
+    enabled: userId !== null,
+  });
+}
+
 export function useUserModeration() {
   const qc = useQueryClient();
   const invalidate = () => {

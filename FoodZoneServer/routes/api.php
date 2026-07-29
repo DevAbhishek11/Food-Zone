@@ -271,6 +271,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             Route::post('orders/{order}/refund', [AdminController::class, 'refundOrder']);
             Route::post('users/bulk', [AdminController::class, 'bulkUsers']);
             Route::get('users', [AdminController::class, 'users']);
+            Route::get('users/{user}', [AdminController::class, 'userDetail']);
             Route::put('users/{user}/ban', [AdminController::class, 'banUser']);
             Route::put('users/{user}/suspend', [AdminController::class, 'suspendUser']);
             Route::put('users/{user}/unban', [AdminController::class, 'unbanUser']);

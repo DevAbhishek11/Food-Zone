@@ -1,5 +1,6 @@
 "use client";
 
+import { UserDetailDrawer } from "@/components/admin/UserDetailDrawer";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -28,6 +29,7 @@ export default function AdminUsersPage() {
   const [status, setStatus] = useState("");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkDays, setBulkDays] = useState(7);
+  const [viewingUserId, setViewingUserId] = useState<number | null>(null);
   const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useAdminUsers({ q: q || undefined, status: status || undefined });
   const { ban, suspend, unban, bulk, verify } = useUserModeration();
@@ -133,6 +135,7 @@ export default function AdminUsersPage() {
                 statusStyle={STATUS_STYLE[u.status] ?? ""}
                 selected={selected.has(u.id)}
                 onToggle={() => toggle(u.id)}
+                onView={() => setViewingUserId(u.id)}
                 mod={{ ban, suspend, unban, verify }}
               />
             ))}
@@ -144,14 +147,18 @@ export default function AdminUsersPage() {
           </>
         )}
       </div>
+
+      {viewingUserId !== null && (
+        <UserDetailDrawer userId={viewingUserId} onClose={() => setViewingUserId(null)} />
+      )}
     </>
   );
 }
 
 type Mod = Pick<ReturnType<typeof useUserModeration>, "ban" | "suspend" | "unban" | "verify">;
 
-function UserRow({ user, statusStyle, selected, onToggle, mod }: {
-  user: User; statusStyle: string; selected: boolean; onToggle: () => void; mod: Mod;
+function UserRow({ user, statusStyle, selected, onToggle, onView, mod }: {
+  user: User; statusStyle: string; selected: boolean; onToggle: () => void; onView: () => void; mod: Mod;
 }) {
   const [days, setDays] = useState(7);
   const isAdmin = isAdminRole(user);
@@ -167,11 +174,13 @@ function UserRow({ user, statusStyle, selected, onToggle, mod }: {
       ) : (
         <span className="w-4" />
       )}
-      <Avatar src={user.profile?.avatar} name={user.name} size={40} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{user.name}</p>
-        <p className="truncate text-xs text-muted">@{user.username} · {user.email}</p>
-      </div>
+      <button onClick={onView} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+        <Avatar src={user.profile?.avatar} name={user.name} size={40} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium hover:underline">{user.name}</p>
+          <p className="truncate text-xs text-muted">@{user.username} · {user.email}</p>
+        </div>
+      </button>
       <span className="rounded-full bg-surface px-2 py-0.5 text-xs capitalize text-muted">{user.role}</span>
       <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium capitalize", statusStyle)}>{user.status}</span>
       {!user.email_verified && (
