@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Auto-cancel orders vendors never accepted (spec §6.4).
 Schedule::command('orders:cancel-stale')->everyMinute();
+
+// Purge accounts whose 30-day deletion grace period has elapsed (spec §8.2).
+Schedule::command('users:purge-deleted')->daily();

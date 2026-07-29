@@ -1,6 +1,7 @@
 "use client";
 
 import { AppShell } from "@/components/AppShell";
+import { ReactivateScreen } from "@/components/ReactivateScreen";
 import { AuthProvider } from "@/lib/auth-context";
 import { useAuthStore } from "@/lib/auth-store";
 import { Loader2 } from "lucide-react";
@@ -21,6 +22,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (status === "guest") router.replace("/login");
   }, [status, router]);
+
+  if (status === "deactivated" && user) {
+    return <ReactivateScreen />;
+  }
 
   // Render children only once we have a resolved, non-null user.
   if (status !== "authenticated" || !user) {

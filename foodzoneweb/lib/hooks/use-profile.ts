@@ -29,3 +29,10 @@ export function useDeactivateAccount() {
     mutationFn: () => api.post("/profile/deactivate"),
   });
 }
+
+/** Deletion is reversible for 30 days: logging back in and reactivating cancels it. */
+export function useRequestAccountDeletion() {
+  return useMutation({
+    mutationFn: (password: string) => api.post("/profile/request-deletion", { password }),
+  });
+}

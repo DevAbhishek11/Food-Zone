@@ -54,6 +54,14 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         });
     });
 
+    /*
+     * Reactivation lives outside the 'active' middleware group deliberately —
+     * a deactivated user (including one with a pending deletion request) must
+     * be able to reach this endpoint despite EnsureActiveUser blocking
+     * everything else, or they'd have no way back in.
+     */
+    Route::middleware('auth:sanctum')->post('profile/reactivate', [\App\Http\Controllers\Api\V1\ProfileController::class, 'reactivate']);
+
     /* ----------------------------------------------- Public (optional auth) */
     Route::middleware('auth.optional')->group(function () {
         Route::get('search', [SearchController::class, 'index']);
@@ -104,6 +112,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         // Account & profile
         Route::put('profile', [ProfileController::class, 'update']);
         Route::post('profile/deactivate', [ProfileController::class, 'deactivate']);
+        Route::post('profile/request-deletion', [ProfileController::class, 'requestDeletion']);
         Route::apiResource('addresses', AddressController::class)->only(['index', 'store', 'update', 'destroy']);
 
         // Social — feed & posts

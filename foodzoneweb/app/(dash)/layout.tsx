@@ -1,5 +1,6 @@
 "use client";
 
+import { ReactivateScreen } from "@/components/ReactivateScreen";
 import { AuthProvider } from "@/lib/auth-context";
 import { useAuthStore } from "@/lib/auth-store";
 import { Loader2 } from "lucide-react";
@@ -20,6 +21,10 @@ export default function DashLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (status === "guest") router.replace("/login");
   }, [status, router]);
+
+  if (status === "deactivated" && user) {
+    return <ReactivateScreen />;
+  }
 
   if (status !== "authenticated" || !user) {
     return (

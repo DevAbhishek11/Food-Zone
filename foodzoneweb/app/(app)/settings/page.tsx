@@ -2,8 +2,9 @@
 
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { useDeactivateAccount } from "@/lib/hooks/use-profile";
+import { useDeactivateAccount, useRequestAccountDeletion } from "@/lib/hooks/use-profile";
 import { toast } from "@/lib/toast-store";
 import {
   Bell,
@@ -17,6 +18,7 @@ import {
   Receipt,
   Shield,
   Sparkles,
+  Trash2,
   UserX,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,6 +32,9 @@ export default function SettingsPage() {
   const { user, logout } = useAuth();
   const deactivate = useDeactivateAccount();
   const [confirming, setConfirming] = useState(false);
+  const requestDeletion = useRequestAccountDeletion();
+  const [deleting, setDeleting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
 
   const onDeactivate = async () => {
     if (!confirming) {
@@ -44,6 +49,21 @@ export default function SettingsPage() {
     } catch {
       toast.error("Could not deactivate. Try again.");
       setConfirming(false);
+    }
+  };
+
+  const onRequestDeletion = async () => {
+    if (!deletePassword) {
+      toast.error("Enter your password to confirm.");
+      return;
+    }
+    try {
+      await requestDeletion.mutateAsync(deletePassword);
+      await logout();
+      toast.success("Deletion requested — log back in within 30 days to cancel it.");
+      router.replace("/login");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not process request.");
     }
   };
 
@@ -95,6 +115,40 @@ export default function SettingsPage() {
           >
             {confirming ? "Tap again to confirm deactivation" : "Deactivate my account"}
           </Button>
+
+          <div className="border-t border-danger/20 pt-3">
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-danger">
+              <Trash2 className="h-4 w-4" />
+              Delete my account
+            </div>
+            <p className="mb-3 text-sm text-muted">
+              Permanently deletes your account and data. You have <strong>30 days</strong> to change your mind —
+              logging back in during that window cancels the deletion.
+            </p>
+            {!deleting ? (
+              <Button variant="danger" onClick={() => setDeleting(true)}>
+                Delete my account
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Confirm your password"
+                  className="h-10 w-full rounded-lg border border-line bg-bg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-danger/60"
+                />
+                <div className="flex gap-2">
+                  <Button variant="ghost" onClick={() => { setDeleting(false); setDeletePassword(""); }}>
+                    Cancel
+                  </Button>
+                  <Button variant="danger" loading={requestDeletion.isPending} onClick={onRequestDeletion}>
+                    Permanently delete my account
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </>

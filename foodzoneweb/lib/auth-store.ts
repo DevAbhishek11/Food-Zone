@@ -3,7 +3,7 @@ import { api, ApiError } from "./api";
 import { clearToken, setToken } from "./token";
 import type { User } from "./types";
 
-type AuthStatus = "idle" | "loading" | "authenticated" | "guest";
+type AuthStatus = "idle" | "loading" | "authenticated" | "guest" | "deactivated";
 
 interface AuthState {
   user: User | null;
@@ -16,22 +16,33 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
+// GET /auth/me deliberately sits outside the 'active' middleware group (a
+// deactivated user must be able to resolve who they are to reach the
+// reactivate flow), so hydrate() has to check the status field itself
+// instead of relying on a 403 — every OTHER endpoint would 403 first.
+function resolveStatus(user: User): AuthStatus {
+  return user.status === "deactivated" ? "deactivated" : "authenticated";
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   status: "idle",
 
   setAuth: (user, token) => {
     setToken(token);
-    set({ user, status: "authenticated" });
+    set({ user, status: resolveStatus(user) });
   },
 
-  setUser: (user) => set({ user }),
+  // Recomputes status too: this is how ReactivateScreen transitions the
+  // store from "deactivated" back to "authenticated" after a successful
+  // POST /profile/reactivate.
+  setUser: (user) => set({ user, status: resolveStatus(user) }),
 
   hydrate: async () => {
     set({ status: "loading" });
     try {
       const { data } = await api.get<User>("/auth/me");
-      set({ user: data, status: "authenticated" });
+      set({ user: data, status: resolveStatus(data) });
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) clearToken();
       set({ user: null, status: "guest" });
