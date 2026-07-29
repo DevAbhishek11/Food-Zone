@@ -9,11 +9,15 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuthStore } from "@/lib/auth-store";
 import { cn } from "@/lib/cn";
 import { useStartConversation } from "@/lib/hooks/use-chat";
-import { useSaved } from "@/lib/hooks/use-feed";
+import { useCollections, useCreateCollection, useDeleteCollection, useSaved, useSaveToCollection } from "@/lib/hooks/use-feed";
+import { toast } from "@/lib/toast-store";
 import { useToggleFollow, useUserFoodJourney, useUserPosts, useUserProfile, useUserTaggedIn } from "@/lib/hooks/use-users";
-import { ArrowLeft, BadgeCheck, Globe, MapPin, MessageCircle } from "lucide-react";
+import { ApiError } from "@/lib/api";
+import type { Post, SavedCollection } from "@/lib/types";
+import { ArrowLeft, BadgeCheck, Folder, Globe, MapPin, MessageCircle, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import type { ChangeEvent } from "react";
 import { useState } from "react";
 
 type Tab = "posts" | "food" | "tagged" | "saved";
@@ -26,12 +30,42 @@ export default function UserProfilePage() {
   const startConversation = useStartConversation();
   const { follow, unfollow } = useToggleFollow(username);
   const [tab, setTab] = useState<Tab>("posts");
+  const [collectionFilter, setCollectionFilter] = useState<number | "uncategorized" | undefined>(undefined);
+  const [creatingCollection, setCreatingCollection] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState("");
 
   const isSelf = !!user && me?.id === user.id;
   const posts = useUserPosts(username, tab === "posts");
   const food = useUserFoodJourney(username, tab === "food");
   const tagged = useUserTaggedIn(username, tab === "tagged");
-  const saved = useSaved(); // own-only; only shown to self
+  const saved = useSaved(tab === "saved" ? collectionFilter : undefined); // own-only; only shown to self
+  const { data: collections } = useCollections();
+  const createCollection = useCreateCollection();
+  const deleteCollection = useDeleteCollection();
+
+  const submitNewCollection = async () => {
+    const name = newCollectionName.trim();
+    if (!name) return;
+    try {
+      await createCollection.mutateAsync(name);
+      setNewCollectionName("");
+      setCreatingCollection(false);
+      toast.success("Collection created.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not create collection.");
+    }
+  };
+
+  const removeCollection = async (id: number) => {
+    if (!window.confirm("Delete this collection? Saved posts move back to Saved.")) return;
+    try {
+      await deleteCollection.mutateAsync(id);
+      if (collectionFilter === id) setCollectionFilter(undefined);
+      toast.success("Collection deleted.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not delete collection.");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -196,6 +230,74 @@ export default function UserProfilePage() {
           ))}
         </div>
 
+        {/* Collections chip bar (Saved tab, own profile only) */}
+        {tab === "saved" && isSelf && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => setCollectionFilter(undefined)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium",
+                collectionFilter === undefined ? "border-brand bg-brand/15 text-brand" : "border-line text-muted hover:text-content",
+              )}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setCollectionFilter("uncategorized")}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium",
+                collectionFilter === "uncategorized" ? "border-brand bg-brand/15 text-brand" : "border-line text-muted hover:text-content",
+              )}
+            >
+              Uncategorized
+            </button>
+            {(collections ?? []).map((c) => (
+              <span
+                key={c.id}
+                className={cn(
+                  "group flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium",
+                  collectionFilter === c.id ? "border-brand bg-brand/15 text-brand" : "border-line text-muted hover:text-content",
+                )}
+              >
+                <button onClick={() => setCollectionFilter(c.id)} className="flex items-center gap-1">
+                  <Folder className="h-3 w-3" /> {c.name} <span className="text-text-tertiary">{c.posts_count}</span>
+                </button>
+                <button
+                  onClick={() => removeCollection(c.id)}
+                  aria-label={`Delete ${c.name}`}
+                  className="text-text-tertiary opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            {creatingCollection ? (
+              <span className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  value={newCollectionName}
+                  onChange={(e) => setNewCollectionName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submitNewCollection()}
+                  placeholder="Collection name"
+                  maxLength={60}
+                  className="h-7 w-32 rounded-full border border-line bg-bg px-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand/60"
+                />
+                <button onClick={submitNewCollection} className="text-xs font-medium text-brand hover:underline">Add</button>
+                <button onClick={() => { setCreatingCollection(false); setNewCollectionName(""); }} aria-label="Cancel" className="text-muted hover:text-content">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={() => setCreatingCollection(true)}
+                className="flex items-center gap-1 rounded-full border border-dashed border-line px-3 py-1 text-xs font-medium text-muted hover:border-brand/40 hover:text-content"
+              >
+                <Plus className="h-3 w-3" /> New collection
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Tab content */}
         <div className="mt-4 space-y-4">
           {active.isLoading ? (
@@ -217,9 +319,13 @@ export default function UserProfilePage() {
             />
           ) : (
             <>
-              {postList.map((post) => (
-                <PostCard key={post.id} post={post} />
-              ))}
+              {postList.map((post) =>
+                tab === "saved" && isSelf ? (
+                  <SavedPostItem key={post.id} post={post} collections={collections ?? []} />
+                ) : (
+                  <PostCard key={post.id} post={post} />
+                ),
+              )}
               {active.hasNextPage && (
                 <div className="flex justify-center pt-2">
                   <Button variant="secondary" onClick={() => active.fetchNextPage()} loading={active.isFetchingNextPage}>
@@ -240,6 +346,43 @@ function Stat({ label, value }: { label: string; value: number }) {
     <div className="text-center">
       <p className="text-lg font-semibold">{value}</p>
       <p className="text-xs text-muted">{label}</p>
+    </div>
+  );
+}
+
+/** A saved post with a "Move to collection" control layered on top (Saved tab only). */
+function SavedPostItem({ post, collections }: { post: Post; collections: SavedCollection[] }) {
+  const move = useSaveToCollection();
+
+  const onMove = async (e: ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    try {
+      await move.mutateAsync({ postId: post.id, collectionId: value ? Number(value) : undefined });
+      toast.success(value ? "Moved to collection." : "Moved to Saved.");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not move post.");
+    }
+  };
+
+  return (
+    <div className="relative">
+      <PostCard post={post} />
+      {collections.length > 0 && (
+        <div className="absolute right-4 top-4 z-10">
+          <select
+            defaultValue=""
+            onChange={onMove}
+            disabled={move.isPending}
+            aria-label="Move to collection"
+            className="h-7 rounded-full border border-line bg-bg-overlay/90 px-2 text-xs text-muted backdrop-blur focus:outline-none focus:ring-2 focus:ring-brand/60"
+          >
+            <option value="">Move to…</option>
+            {collections.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
     </div>
   );
 }

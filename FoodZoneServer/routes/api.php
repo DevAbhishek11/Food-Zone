@@ -110,6 +110,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('feed', [PostController::class, 'feed']);
         Route::get('feed/suggested', [PostController::class, 'suggested']);
         Route::get('saved', [PostController::class, 'saved']);
+        Route::get('collections', [\App\Http\Controllers\Api\V1\SavedCollectionController::class, 'index']);
+        Route::post('collections', [\App\Http\Controllers\Api\V1\SavedCollectionController::class, 'store']);
+        Route::delete('collections/{collection}', [\App\Http\Controllers\Api\V1\SavedCollectionController::class, 'destroy']);
         Route::post('posts', [PostController::class, 'store']);
         Route::put('posts/{post}', [PostController::class, 'update']);
         Route::delete('posts/{post}', [PostController::class, 'destroy']);

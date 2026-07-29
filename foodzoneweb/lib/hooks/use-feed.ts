@@ -1,8 +1,8 @@
 "use client";
 
 import { api } from "@/lib/api";
-import type { ApiEnvelope, Post } from "@/lib/types";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { ApiEnvelope, Post, SavedCollection } from "@/lib/types";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function useFeed() {
   return useInfiniteQuery({
@@ -44,12 +44,61 @@ export function useSharePost() {
   });
 }
 
-export function useSaved() {
+/** Bookmarked posts, optionally scoped to one collection ("uncategorized" for the default bucket). */
+export function useSaved(collectionId?: number | "uncategorized") {
   return useInfiniteQuery({
-    queryKey: ["saved"],
+    queryKey: ["saved", collectionId ?? "all"],
     initialPageParam: 1,
-    queryFn: ({ pageParam }) => api.get<Post[]>("/saved", { query: { page: pageParam } }),
+    queryFn: ({ pageParam }) =>
+      api.get<Post[]>("/saved", {
+        query: {
+          page: pageParam,
+          collection_id: typeof collectionId === "number" ? collectionId : undefined,
+          uncategorized: collectionId === "uncategorized" ? true : undefined,
+        },
+      }),
     getNextPageParam: (last: ApiEnvelope<Post[]>) =>
       last.meta?.has_more ? last.meta.current_page + 1 : undefined,
+  });
+}
+
+/** Named folders for organising bookmarks (spec §9.4). */
+export function useCollections() {
+  return useQuery({
+    queryKey: ["collections"],
+    queryFn: () => api.get<SavedCollection[]>("/collections"),
+    select: (e) => e.data,
+  });
+}
+
+export function useCreateCollection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.post<SavedCollection>("/collections", { name }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["collections"] }),
+  });
+}
+
+export function useDeleteCollection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.del(`/collections/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["collections"] });
+      qc.invalidateQueries({ queryKey: ["saved"] });
+    },
+  });
+}
+
+/** Save a post into a collection (or the default bucket when omitted) — also moves it if already saved. */
+export function useSaveToCollection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ postId, collectionId }: { postId: number; collectionId?: number }) =>
+      api.post(`/posts/${postId}/save`, { collection_id: collectionId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["saved"] });
+      qc.invalidateQueries({ queryKey: ["collections"] });
+    },
   });
 }

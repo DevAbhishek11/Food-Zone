@@ -17,6 +17,7 @@ use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class PostController extends Controller
 {
@@ -236,7 +237,19 @@ class PostController extends Controller
     /** Bookmark a post. */
     public function save(Request $request, Post $post): JsonResponse
     {
-        SavedPost::firstOrCreate(['user_id' => $request->user()->id, 'post_id' => $post->id]);
+        $data = $request->validate([
+            'collection_id' => [
+                'nullable', 'integer',
+                Rule::exists('saved_collections', 'id')->where('user_id', $request->user()->id),
+            ],
+        ]);
+
+        // updateOrCreate: saving an already-saved post again moves it into
+        // the given collection instead of erroring on the unique constraint.
+        SavedPost::updateOrCreate(
+            ['user_id' => $request->user()->id, 'post_id' => $post->id],
+            ['collection_id' => $data['collection_id'] ?? null],
+        );
 
         return ApiResponse::success(null, 'Post saved.', 201);
     }
@@ -248,13 +261,20 @@ class PostController extends Controller
         return ApiResponse::success(null, 'Post removed from saved.');
     }
 
-    /** The current user's bookmarked posts. */
+    /** The current user's bookmarked posts, optionally scoped to one collection. */
     public function saved(Request $request): JsonResponse
     {
         $me = $request->user();
 
+        $savedQuery = SavedPost::where('user_id', $me->id);
+        if ($request->filled('collection_id')) {
+            $savedQuery->where('collection_id', (int) $request->input('collection_id'));
+        } elseif ($request->boolean('uncategorized')) {
+            $savedQuery->whereNull('collection_id');
+        }
+
         $posts = Post::query()
-            ->whereIn('id', SavedPost::where('user_id', $me->id)->select('post_id'))
+            ->whereIn('id', $savedQuery->select('post_id'))
             ->with(['user.profile', 'media', 'likes' => fn ($q) => $q->where('user_id', $me->id)])
             ->withExists(['savedBy as is_saved' => fn ($q) => $q->where('user_id', $me->id)])
             ->latest()

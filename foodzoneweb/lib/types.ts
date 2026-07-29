@@ -79,6 +79,13 @@ export interface PostAuthor {
   role?: UserRole;
 }
 
+export interface SavedCollection {
+  id: number;
+  name: string;
+  posts_count: number;
+  created_at: string;
+}
+
 export interface Post {
   id: number;
   body: string | null;
