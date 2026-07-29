@@ -7,14 +7,23 @@ import { TrendingSidebar } from "@/components/feed/TrendingSidebar";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/ui/States";
-import { useFeed } from "@/lib/hooks/use-feed";
-import { Search } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { useFeed, useNewPostsCount } from "@/lib/hooks/use-feed";
+import { ArrowUp, Search } from "lucide-react";
 import Link from "next/link";
 
 export default function FeedPage() {
+  const { user } = useAuth();
   const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeed();
+  const newPosts = useNewPostsCount(user.id);
 
   const posts = data?.pages.flatMap((p) => p.data) ?? [];
+
+  const loadNewPosts = () => {
+    refetch();
+    newPosts.reset();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <>
@@ -32,6 +41,16 @@ export default function FeedPage() {
         <div className="w-full max-w-2xl space-y-4">
           <StoryBar />
           <PostComposer />
+
+        {newPosts.count > 0 && (
+          <button
+            onClick={loadNewPosts}
+            className="fz-gradient-brand mx-auto flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-white shadow-brand transition-transform hover:scale-105"
+          >
+            <ArrowUp className="h-4 w-4" />
+            {newPosts.count} new post{newPosts.count === 1 ? "" : "s"} — tap to load
+          </button>
+        )}
 
         {isLoading ? (
           <>

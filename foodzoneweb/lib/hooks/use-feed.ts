@@ -1,8 +1,10 @@
 "use client";
 
 import { api } from "@/lib/api";
+import { getEcho } from "@/lib/echo";
 import type { ApiEnvelope, Post, SavedCollection } from "@/lib/types";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 export function useFeed() {
   return useInfiniteQuery({
@@ -12,6 +14,33 @@ export function useFeed() {
     getNextPageParam: (last: ApiEnvelope<Post[]>) =>
       last.meta?.has_more ? last.meta.current_page + 1 : undefined,
   });
+}
+
+/**
+ * Live count of public posts created since this hook mounted (excluding the
+ * current user's own — those already appear instantly via the composer's own
+ * cache update). Drives the "N new posts" banner; falls back to silently
+ * doing nothing when realtime isn't configured (getEcho() resolves null).
+ */
+export function useNewPostsCount(myUserId: number | undefined) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    getEcho().then((echo) => {
+      if (!echo || !active) return;
+      echo.channel("feed").listen(".post.created", (data: unknown) => {
+        const payload = data as { author_id?: number };
+        if (payload.author_id !== myUserId) setCount((n) => n + 1);
+      });
+    });
+    return () => {
+      active = false;
+      getEcho().then((echo) => echo?.leave("feed"));
+    };
+  }, [myUserId]);
+
+  return { count, reset: () => setCount(0) };
 }
 
 interface CreatePostInput {

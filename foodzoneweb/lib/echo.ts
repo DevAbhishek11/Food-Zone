@@ -11,6 +11,7 @@ interface EchoChannel {
 }
 interface EchoLike {
   private: (channel: string) => EchoChannel;
+  channel: (channel: string) => EchoChannel;
   leave: (channel: string) => void;
 }
 

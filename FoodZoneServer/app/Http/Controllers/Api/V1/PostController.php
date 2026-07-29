@@ -125,6 +125,10 @@ class PostController extends Controller
 
         $post->load(['user.profile', 'media']);
 
+        if ($post->privacy === PostPrivacy::Public) {
+            event(new \App\Events\PostCreated($post->id, $me->id));
+        }
+
         return ApiResponse::success(new PostResource($post), 'Post created.', 201);
     }
 
