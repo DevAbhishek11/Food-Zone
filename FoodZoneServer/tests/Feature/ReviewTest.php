@@ -98,4 +98,36 @@ class ReviewTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.review', 'Genuinely the best biryani in town!');
     }
+
+    public function test_rating_with_photos_stores_and_returns_them(): void
+    {
+        $vendor = Vendor::factory()->create();
+        $customer = User::factory()->create();
+        $order = $this->deliveredOrder($vendor, $customer);
+        $photos = ['https://cdn.example.test/a.jpg', 'https://cdn.example.test/b.jpg'];
+
+        Sanctum::actingAs($customer);
+        $this->postJson("/api/v1/orders/{$order->id}/rate", [
+            'rating' => 5,
+            'review' => 'Loved it, photos attached below for proof!',
+            'images' => $photos,
+        ])->assertCreated();
+
+        $this->getJson("/api/v1/vendors/{$vendor->slug}/reviews")
+            ->assertOk()
+            ->assertJsonPath('data.0.images', $photos);
+    }
+
+    public function test_rating_photos_are_capped_at_five(): void
+    {
+        $vendor = Vendor::factory()->create();
+        $customer = User::factory()->create();
+        $order = $this->deliveredOrder($vendor, $customer);
+
+        Sanctum::actingAs($customer);
+        $this->postJson("/api/v1/orders/{$order->id}/rate", [
+            'rating' => 4,
+            'images' => array_map(fn ($i) => "https://cdn.example.test/{$i}.jpg", range(1, 6)),
+        ])->assertStatus(422);
+    }
 }

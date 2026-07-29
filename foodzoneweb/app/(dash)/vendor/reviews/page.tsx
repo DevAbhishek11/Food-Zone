@@ -72,6 +72,16 @@ function ReviewRow({ review }: { review: Review }) {
         <Stars value={review.rating} />
       </div>
       {review.review && <p className="mt-2 text-sm text-content">{review.review}</p>}
+      {review.images.length > 0 && (
+        <div className="mt-2 flex gap-2 overflow-x-auto">
+          {review.images.map((url) => (
+            <a key={url} href={url} target="_blank" rel="noreferrer" className="shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="h-20 w-20 rounded-lg border border-line object-cover transition-opacity hover:opacity-80" />
+            </a>
+          ))}
+        </div>
+      )}
 
       {review.vendor_reply ? (
         <div className="mt-3 rounded-lg border-l-2 border-brand bg-surface p-3">

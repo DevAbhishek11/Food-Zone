@@ -36,7 +36,7 @@ class MediaTest extends TestCase
 
         // Categories the web + mobile clients actually send. 'story' was
         // missing from the whitelist once, silently breaking story uploads.
-        foreach (['avatar', 'cover', 'post', 'story', 'vendor', 'menu', 'misc'] as $category) {
+        foreach (['avatar', 'cover', 'post', 'story', 'vendor', 'menu', 'review', 'misc'] as $category) {
             $this->postJson('/api/v1/media', [
                 'file' => UploadedFile::fake()->image("{$category}.jpg", 100, 100),
                 'category' => $category,

@@ -36,6 +36,16 @@ export function VendorReviews({ idOrSlug }: { idOrSlug: string }) {
             <Stars value={r.rating} />
           </div>
           {r.review && <p className="mt-2 text-sm text-content">{r.review}</p>}
+          {r.images.length > 0 && (
+            <div className="mt-2 flex gap-2 overflow-x-auto">
+              {r.images.map((url) => (
+                <a key={url} href={url} target="_blank" rel="noreferrer" className="shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" className="h-20 w-20 rounded-lg border border-line object-cover transition-opacity hover:opacity-80" />
+                </a>
+              ))}
+            </div>
+          )}
           {r.vendor_reply && (
             <div className="mt-3 rounded-lg border-l-2 border-brand bg-surface p-3">
               <p className="text-xs font-semibold text-brand">Owner&apos;s reply</p>

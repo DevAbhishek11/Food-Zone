@@ -109,6 +109,7 @@ export function usePayOrder() {
 export interface RateOrderInput {
   rating: number;
   review?: string;
+  images?: string[];
 }
 
 export function useRateOrder(orderId: number) {
