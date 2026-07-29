@@ -29,7 +29,8 @@ export default function AdminBroadcastPage() {
 
     try {
       const res = await broadcast.mutateAsync({ title: t, message: m, segment });
-      toast.success(`Sent to ${res.data.recipients} ${res.data.recipients === 1 ? "person" : "people"}.`);
+      const failedNote = res.data.failed > 0 ? ` (${res.data.failed} failed — check the audit log)` : "";
+      toast.success(`Sent to ${res.data.recipients} ${res.data.recipients === 1 ? "person" : "people"}.${failedNote}`);
       setTitle("");
       setMessage("");
     } catch (e) {

@@ -79,7 +79,14 @@ export default function VendorInventoryPage() {
                   <td className="p-3 text-right">
                     <div className="inline-flex gap-2">
                       <Button size="xs" variant="secondary" onClick={() => setAdjusting(i)}>Adjust</Button>
-                      <Button size="xs" variant="ghost" onClick={() => remove.mutate(i.id)} disabled={remove.isPending}>Delete</Button>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => remove.mutate(i.id, { onError: () => toast.error("Could not delete item.") })}
+                        disabled={remove.isPending}
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </td>
                 </tr>

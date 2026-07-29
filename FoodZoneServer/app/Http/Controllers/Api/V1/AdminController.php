@@ -27,6 +27,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
@@ -191,7 +192,13 @@ class AdminController extends Controller
                 return ApiResponse::error('No captured payment found for this order.', 422);
             }
 
-            $ok = $this->gateway->refund($payment, $data['amount'] ?? null);
+            try {
+                $ok = $this->gateway->refund($payment, $data['amount'] ?? null);
+            } catch (\Throwable $e) {
+                Log::error('Admin refund gateway call failed', ['order' => $order->id, 'error' => $e->getMessage()]);
+
+                return ApiResponse::error('The payment gateway could not be reached. No refund was issued — try again shortly.', 502);
+            }
             if (! $ok) {
                 return ApiResponse::error('The payment gateway rejected the refund.', 502);
             }
@@ -589,19 +596,29 @@ class AdminController extends Controller
         elseif ($segment === 'admins') $query->whereIn('role', [UserRole::Admin->value, UserRole::SuperAdmin->value]);
         elseif ($segment === 'verified') $query->where('is_verified', true);
 
+        // Per-recipient isolation: one bad row must not abort the whole
+        // broadcast after it's already reached hundreds of users — an admin
+        // seeing a 500 here would likely re-send, double-notifying everyone
+        // who already succeeded.
         $count = 0;
-        $query->chunk(200, function ($users) use ($data, &$count) {
+        $failed = 0;
+        $query->chunk(200, function ($users) use ($data, &$count, &$failed) {
             foreach ($users as $u) {
-                $this->notifications->notify($u->id, 'system', $data['title'], $data['message']);
-                $count++;
+                try {
+                    $this->notifications->notify($u->id, 'system', $data['title'], $data['message']);
+                    $count++;
+                } catch (\Throwable $e) {
+                    $failed++;
+                    Log::error('Broadcast notification failed for a user', ['user_id' => $u->id, 'error' => $e->getMessage()]);
+                }
             }
         });
 
         $this->audit->log($request->user(), 'platform.broadcast', null, [
-            'segment' => $segment, 'count' => $count, 'title' => $data['title'],
+            'segment' => $segment, 'count' => $count, 'failed' => $failed, 'title' => $data['title'],
         ]);
 
-        return ApiResponse::success(['recipients' => $count], 'Broadcast sent.');
+        return ApiResponse::success(['recipients' => $count, 'failed' => $failed], 'Broadcast sent.');
     }
 
     /** Lightweight system-health snapshot (DB/cache/queue/storage) for the admin home. */

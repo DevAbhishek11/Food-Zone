@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/ui/States";
 import { timeAgo } from "@/lib/format";
 import { useConversations, useMuteConversation, useTogglePinConversation } from "@/lib/hooks/use-chat";
+import { toast } from "@/lib/toast-store";
 import { BellOff, Pin } from "lucide-react";
 import Link from "next/link";
 
@@ -56,7 +57,7 @@ export default function MessagesPage() {
                 )}
                 <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
-                    onClick={(e) => { e.preventDefault(); togglePin.mutate(c.id); }}
+                    onClick={(e) => { e.preventDefault(); togglePin.mutate(c.id, { onError: () => toast.error("Could not update pin.") }); }}
                     aria-label={c.is_pinned ? "Unpin" : "Pin"}
                     className="rounded-full bg-bg p-1.5 text-muted hover:text-brand"
                   >
@@ -65,7 +66,10 @@ export default function MessagesPage() {
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      mute.mutate({ conversationId: c.id, muted: !c.is_muted, minutes: c.is_muted ? undefined : 60 });
+                      mute.mutate(
+                        { conversationId: c.id, muted: !c.is_muted, minutes: c.is_muted ? undefined : 60 },
+                        { onError: () => toast.error("Could not update mute setting.") },
+                      );
                     }}
                     aria-label={c.is_muted ? "Unmute" : "Mute"}
                     className="rounded-full bg-bg p-1.5 text-muted hover:text-content"

@@ -133,31 +133,42 @@ class OrderController extends Controller
         $reason = $request->validate(['reason' => ['nullable', 'string', 'max:255']])['reason'] ?? 'Cancelled by customer.';
 
         $wasPaid = $order->payment_status === 'paid';
+        // Only flip payment_status to 'refunded' once money has actually
+        // moved — an order should never claim "refunded" while a gateway
+        // call silently failed underneath it. On failure the order still
+        // cancels, but payment_status stays 'paid' (a queryable signal for
+        // admin to reconcile via the manual refund tool).
+        $refunded = false;
+
+        // A wallet payment never created a gateway Payment row (it debited
+        // synchronously at checkout), so it needs its own branch — otherwise
+        // the customer's money just vanishes.
+        if ($wasPaid && $order->payment_method === 'wallet') {
+            $this->wallet->credit($order->user, $order->wallet_amount, 'order_refund', $order, "Refund for cancelled order {$order->order_number}");
+            $refunded = true;
+        } elseif ($wasPaid) {
+            $payment = $order->payments()->where('status', 'paid')->latest()->first();
+            if ($payment) {
+                try {
+                    $refunded = $this->payments->refund($payment);
+                } catch (\Throwable $e) {
+                    Log::error('Refund call failed on cancel', ['order' => $order->id, 'error' => $e->getMessage()]);
+                }
+                if ($refunded) {
+                    $payment->update(['status' => 'refunded']);
+                }
+            } else {
+                Log::error('Cancel: order marked paid but no captured payment found', ['order' => $order->id]);
+            }
+        }
 
         $order->update([
             'status' => OrderStatus::Cancelled->value,
             'cancellation_reason' => $reason,
             'cancelled_at' => now(),
-            'payment_status' => $wasPaid ? 'refunded' : $order->payment_status,
+            'payment_status' => ($wasPaid && $refunded) ? 'refunded' : $order->payment_status,
         ]);
 
-        // Refund a captured payment (best-effort for the gateway: the order
-        // is already marked refunded; a gateway hiccup is logged, not fatal).
-        // A wallet payment never created a gateway Payment row, so it needs
-        // its own branch — otherwise the customer's money just vanishes.
-        if ($wasPaid && $order->payment_method === 'wallet') {
-            $this->wallet->credit($order->user, $order->wallet_amount, 'order_refund', $order, "Refund for cancelled order {$order->order_number}");
-        } elseif ($wasPaid) {
-            $payment = $order->payments()->where('status', 'paid')->latest()->first();
-            if ($payment) {
-                try {
-                    $this->payments->refund($payment);
-                } catch (\Throwable $e) {
-                    Log::warning('Refund call failed on cancel', ['order' => $order->id, 'error' => $e->getMessage()]);
-                }
-                $payment->update(['status' => 'refunded']);
-            }
-        }
         $order->statusHistory()->create([
             'status' => OrderStatus::Cancelled->value,
             'changed_by' => $request->user()->id,

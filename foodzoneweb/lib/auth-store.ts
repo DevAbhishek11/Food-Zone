@@ -3,7 +3,7 @@ import { api, ApiError } from "./api";
 import { clearToken, setToken } from "./token";
 import type { User } from "./types";
 
-type AuthStatus = "idle" | "loading" | "authenticated" | "guest" | "deactivated";
+type AuthStatus = "idle" | "loading" | "authenticated" | "guest" | "deactivated" | "error";
 
 interface AuthState {
   user: User | null;
@@ -44,8 +44,16 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data } = await api.get<User>("/auth/me");
       set({ user: data, status: resolveStatus(data) });
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) clearToken();
-      set({ user: null, status: "guest" });
+      // Only an actual 401 (invalid/expired token) means "you're logged
+      // out" — a network blip or a backend 500 here would otherwise bounce
+      // a genuinely-authenticated user to the login screen with the token
+      // still valid, which just looks like a random glitch to them.
+      if (e instanceof ApiError && e.status === 401) {
+        clearToken();
+        set({ user: null, status: "guest" });
+      } else {
+        set({ user: null, status: "error" });
+      }
     }
   },
 

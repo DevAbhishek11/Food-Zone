@@ -93,8 +93,12 @@ export default function UserProfilePage() {
   const following = !!user.is_following;
   const cover = user.profile?.cover;
   const messageUser = async (userId: number) => {
-    const res = await startConversation.mutateAsync(userId);
-    router.push(`/messages/${res.data.id}`);
+    try {
+      const res = await startConversation.mutateAsync(userId);
+      router.push(`/messages/${res.data.id}`);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not start a conversation.");
+    }
   };
 
   const active = tab === "posts" ? posts : tab === "food" ? food : tab === "tagged" ? tagged : saved;
@@ -138,11 +142,20 @@ export default function UserProfilePage() {
                       <MessageCircle className="h-4 w-4" />
                     </Button>
                     {following ? (
-                      <Button variant="secondary" size="sm" loading={unfollow.isPending} onClick={() => unfollow.mutate(user.id)}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={unfollow.isPending}
+                        onClick={() => unfollow.mutate(user.id, { onError: () => toast.error("Could not unfollow. Try again.") })}
+                      >
                         Following
                       </Button>
                     ) : (
-                      <Button size="sm" loading={follow.isPending} onClick={() => follow.mutate(user.id)}>
+                      <Button
+                        size="sm"
+                        loading={follow.isPending}
+                        onClick={() => follow.mutate(user.id, { onError: () => toast.error("Could not follow. Try again.") })}
+                      >
                         {user.profile?.is_private ? "Request" : "Follow"}
                       </Button>
                     )}

@@ -26,6 +26,19 @@ export default function DashLayout({ children }: { children: ReactNode }) {
     return <ReactivateScreen />;
   }
 
+  // A network blip or backend hiccup while resolving the session — distinct
+  // from "guest" so it doesn't silently bounce a real user to /login.
+  if (status === "error") {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-bg px-4 text-center">
+        <p className="text-sm text-muted">Couldn&apos;t reach the server. Check your connection.</p>
+        <button onClick={() => hydrate()} className="text-sm font-medium text-brand hover:underline">
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   if (status !== "authenticated" || !user) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-bg">

@@ -14,6 +14,7 @@ import {
   useSendMessage,
   useToggleReact,
 } from "@/lib/hooks/use-chat";
+import { toast } from "@/lib/toast-store";
 import type { Message } from "@/lib/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Reply, Send, Smile, Trash2, X } from "lucide-react";
@@ -106,8 +107,8 @@ export default function ThreadPage() {
                 key={m.id}
                 message={m}
                 onReply={() => setReplyTo(m)}
-                onReact={(emoji) => react.mutate({ messageId: m.id, emoji })}
-                onDelete={() => remove.mutate(m.id)}
+                onReact={(emoji) => react.mutate({ messageId: m.id, emoji }, { onError: () => toast.error("Could not react to message.") })}
+                onDelete={() => remove.mutate(m.id, { onError: () => toast.error("Could not delete message.") })}
               />
             ))}
             <div ref={bottomRef} />

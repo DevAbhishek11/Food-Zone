@@ -67,7 +67,11 @@ export default function VendorMenuPage() {
             {cats.map((cat) => (
               <span key={cat.id} className="flex items-center gap-2 rounded-full border border-line bg-bg-soft px-3 py-1 text-sm">
                 {cat.name}
-                <button onClick={() => deleteCategory.mutate(cat.id)} aria-label="Delete category" className="text-muted hover:text-danger">
+                <button
+                  onClick={() => deleteCategory.mutate(cat.id, { onError: () => toast.error("Could not delete category.") })}
+                  aria-label="Delete category"
+                  className="text-muted hover:text-danger"
+                >
                   <X className="h-3.5 w-3.5" />
                 </button>
               </span>
@@ -130,7 +134,7 @@ export default function VendorMenuPage() {
                       <p className="text-xs text-muted">{money(item.price)}</p>
                     </div>
                     <button
-                      onClick={() => toggle.mutate(item.id)}
+                      onClick={() => toggle.mutate(item.id, { onError: () => toast.error("Could not update availability.") })}
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${item.is_available ? "bg-success/15 text-success" : "bg-surface text-muted"}`}
                     >
                       {item.is_available ? "Available" : "Hidden"}
@@ -138,7 +142,11 @@ export default function VendorMenuPage() {
                     <button onClick={() => setEditing(item)} aria-label="Edit" className="text-muted hover:text-content">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button onClick={() => remove.mutate(item.id)} aria-label="Delete" className="text-muted hover:text-danger">
+                    <button
+                      onClick={() => remove.mutate(item.id, { onError: () => toast.error("Could not delete item.") })}
+                      aria-label="Delete"
+                      className="text-muted hover:text-danger"
+                    >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>

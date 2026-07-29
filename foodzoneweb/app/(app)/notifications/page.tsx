@@ -12,6 +12,7 @@ import {
   useMarkAllRead,
   useMarkRead,
 } from "@/lib/hooks/use-notifications";
+import { toast } from "@/lib/toast-store";
 import type { AppNotification } from "@/lib/types";
 import { AtSign, Bell, Flame, Heart, MessageCircle, Receipt, Settings, Sparkles, Store, Tag, UserPlus } from "lucide-react";
 import Link from "next/link";
@@ -63,10 +64,20 @@ export default function NotificationsPage() {
             <Link href="/notifications/preferences" className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface hover:text-content">
               <Settings className="h-4 w-4" /> Preferences
             </Link>
-            <Button variant="ghost" size="sm" onClick={() => markAllRead.mutate()} disabled={!hasUnread || markAllRead.isPending}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => markAllRead.mutate(undefined, { onError: () => toast.error("Could not mark all as read.") })}
+              disabled={!hasUnread || markAllRead.isPending}
+            >
               Mark all read
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => clearAll.mutate()} disabled={empty || clearAll.isPending}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => clearAll.mutate(undefined, { onError: () => toast.error("Could not clear notifications.") })}
+              disabled={empty || clearAll.isPending}
+            >
               Clear
             </Button>
           </div>

@@ -44,6 +44,6 @@ export function useResolveViolation() {
 export function useBroadcast() {
   return useMutation({
     mutationFn: (body: { title: string; message: string; segment?: string }) =>
-      api.post<{ recipients: number }>("/admin/broadcast", body),
+      api.post<{ recipients: number; failed: number }>("/admin/broadcast", body),
   });
 }

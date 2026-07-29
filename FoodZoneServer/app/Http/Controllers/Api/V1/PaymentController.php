@@ -12,6 +12,8 @@ use App\Services\NotificationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class PaymentController extends Controller
@@ -46,7 +48,16 @@ class PaymentController extends Controller
             'status' => 'created',
         ]);
 
-        $intent = $this->gateway->createIntent($payment);
+        try {
+            $intent = $this->gateway->createIntent($payment);
+        } catch (\Throwable $e) {
+            // Don't leave an orphaned 'created' row behind for a gateway call
+            // that never actually reached the gateway.
+            $payment->update(['status' => 'failed']);
+            Log::error('Payment intent creation failed', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
+
+            return ApiResponse::error('Could not start payment. Please try again in a moment.', 502);
+        }
 
         return ApiResponse::success(
             array_merge(['payment_id' => $payment->id, 'gateway' => $this->gateway->name()], $intent),
@@ -115,19 +126,36 @@ class PaymentController extends Controller
             return; // idempotent — duplicate webhook deliveries are common
         }
 
-        $payment->update(['status' => 'paid', 'reference' => $reference]);
+        // Payment + order update together so a failure partway through
+        // (e.g. the order update throwing) rolls back the payment update too
+        // — otherwise a retry would find status=paid, no-op at the guard
+        // above, and leave the order stuck pending forever with no way to
+        // reach this code path again.
+        $order = DB::transaction(function () use ($payment, $reference) {
+            $payment->update(['status' => 'paid', 'reference' => $reference]);
 
-        $order = $payment->order;
-        if ($order && $order->payment_status !== 'paid') {
-            $order->update(['payment_status' => 'paid']);
+            $order = $payment->order;
+            if ($order && $order->payment_status !== 'paid') {
+                $order->update(['payment_status' => 'paid']);
+            }
 
-            $this->notifications->notify(
-                $order->vendor->user_id,
-                'order_paid',
-                'Payment received',
-                "Order {$order->order_number} has been paid (".number_format((float) $order->total, 2).').',
-                ['order_id' => $order->id],
-            );
+            return $order;
+        });
+
+        // Best-effort: a notification hiccup must not undo a successful
+        // payment confirmation or make the gateway retry the whole webhook.
+        if ($order) {
+            try {
+                $this->notifications->notify(
+                    $order->vendor->user_id,
+                    'order_paid',
+                    'Payment received',
+                    "Order {$order->order_number} has been paid (".number_format((float) $order->total, 2).').',
+                    ['order_id' => $order->id],
+                );
+            } catch (\Throwable $e) {
+                Log::error('Payment-received notification failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            }
         }
     }
 }

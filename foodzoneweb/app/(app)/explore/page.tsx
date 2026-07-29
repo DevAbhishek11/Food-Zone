@@ -14,6 +14,8 @@ import {
   useExplore,
 } from "@/lib/hooks/use-explore";
 import { useToggleFollow } from "@/lib/hooks/use-users";
+import { ApiError } from "@/lib/api";
+import { toast } from "@/lib/toast-store";
 import type { Post } from "@/lib/types";
 import { ArrowUpRight, Hash, Heart, MapPin, Search, TrendingDown, TrendingUp, UtensilsCrossed } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -328,8 +330,8 @@ function SuggestedUserCard({ row }: { row: SuggestedUserRow }) {
     try {
       await follow.mutateAsync(row.user.id);
       setFollowed(true);
-    } catch {
-      /* swallow */
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not follow. Try again.");
     }
   };
 

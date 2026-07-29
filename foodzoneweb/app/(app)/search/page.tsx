@@ -4,7 +4,7 @@ import { PostCard } from "@/components/feed/PostCard";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { EmptyState } from "@/components/ui/States";
+import { EmptyState, ErrorState } from "@/components/ui/States";
 import { VendorCard } from "@/components/vendors/VendorCard";
 import { cn } from "@/lib/cn";
 import { useCombinedSearch, useTypedSearch } from "@/lib/hooks/use-search";
@@ -96,8 +96,9 @@ function UserRow({ user }: { user: User }) {
 }
 
 function AllResults({ q, onSeeAll }: { q: string; onSeeAll: (t: Tab) => void }) {
-  const { data, isLoading } = useCombinedSearch(q);
+  const { data, isLoading, isError, refetch } = useCombinedSearch(q);
   if (isLoading) return <Spinner />;
+  if (isError) return <ErrorState message="Couldn't search right now." onRetry={() => refetch()} />;
   if (!data) return null;
   const empty = data.users.length === 0 && data.vendors.length === 0 && data.posts.length === 0;
   if (empty) return <EmptyState title="No results" hint={`Nothing matched “${q}”.`} />;
@@ -148,6 +149,7 @@ function UsersResults({ q }: { q: string }) {
   const query = useTypedSearch(q, "users");
   const items = (query.data?.pages.flatMap((p) => p.data) ?? []) as User[];
   if (query.isLoading) return <Spinner />;
+  if (query.isError) return <ErrorState message="Couldn't search right now." onRetry={() => query.refetch()} />;
   if (items.length === 0) return <EmptyState title="No people found" />;
   return (
     <div className="space-y-2">
@@ -161,6 +163,7 @@ function VendorsResults({ q }: { q: string }) {
   const query = useTypedSearch(q, "vendors");
   const items = (query.data?.pages.flatMap((p) => p.data) ?? []) as Vendor[];
   if (query.isLoading) return <Spinner />;
+  if (query.isError) return <ErrorState message="Couldn't search right now." onRetry={() => query.refetch()} />;
   if (items.length === 0) return <EmptyState title="No restaurants found" />;
   return (
     <div className="space-y-2">
@@ -174,6 +177,7 @@ function PostsResults({ q }: { q: string }) {
   const query = useTypedSearch(q, "posts");
   const items = (query.data?.pages.flatMap((p) => p.data) ?? []) as Post[];
   if (query.isLoading) return <Spinner />;
+  if (query.isError) return <ErrorState message="Couldn't search right now." onRetry={() => query.refetch()} />;
   if (items.length === 0) return <EmptyState title="No posts found" />;
   return (
     <div className="space-y-3">

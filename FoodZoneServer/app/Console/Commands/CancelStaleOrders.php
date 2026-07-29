@@ -37,54 +37,70 @@ class CancelStaleOrders extends Command
             ->with('vendor')
             ->get();
 
+        $cancelled = 0;
         foreach ($stale as $order) {
-            DB::transaction(function () use ($order, $notifications, $gateway, $wallet, $window) {
-                $wasPaid = $order->payment_status === 'paid';
+            // Isolate each order: one bad row (missing vendor, a DB hiccup)
+            // must not abort the whole run — the scheduler re-selects the
+            // same stale orders every minute, so an uncaught exception here
+            // would silently wedge auto-cancellation for every order after
+            // the poisoned one, forever.
+            try {
+                DB::transaction(function () use ($order, $notifications, $gateway, $wallet, $window) {
+                    $wasPaid = $order->payment_status === 'paid';
+                    // Only flip payment_status to 'refunded' once money has
+                    // actually moved — see OrderController::cancel for the
+                    // same reasoning.
+                    $refunded = false;
 
-                $order->update([
-                    'status' => OrderStatus::Cancelled->value,
-                    'cancellation_reason' => "Not accepted within {$window} minutes.",
-                    'cancelled_at' => now(),
-                    'payment_status' => $wasPaid ? 'refunded' : $order->payment_status,
-                ]);
-
-                // Refund a captured payment (best-effort for the gateway, mirrors
-                // user cancel). A wallet payment never created a gateway Payment
-                // row (it debited synchronously at checkout), so it needs its
-                // own branch — otherwise the customer's money just vanishes.
-                if ($wasPaid && $order->payment_method === 'wallet') {
-                    $wallet->credit($order->user, $order->wallet_amount, 'order_refund', $order, "Auto-cancelled order {$order->order_number}");
-                } elseif ($wasPaid) {
-                    $payment = $order->payments()->where('status', 'paid')->latest()->first();
-                    if ($payment) {
-                        try {
-                            $gateway->refund($payment);
-                        } catch (\Throwable $e) {
-                            Log::warning('Refund call failed on auto-cancel', ['order' => $order->id, 'error' => $e->getMessage()]);
+                    if ($wasPaid && $order->payment_method === 'wallet') {
+                        $wallet->credit($order->user, $order->wallet_amount, 'order_refund', $order, "Auto-cancelled order {$order->order_number}");
+                        $refunded = true;
+                    } elseif ($wasPaid) {
+                        $payment = $order->payments()->where('status', 'paid')->latest()->first();
+                        if ($payment) {
+                            try {
+                                $refunded = $gateway->refund($payment);
+                            } catch (\Throwable $e) {
+                                Log::error('Refund call failed on auto-cancel', ['order' => $order->id, 'error' => $e->getMessage()]);
+                            }
+                            if ($refunded) {
+                                $payment->update(['status' => 'refunded']);
+                            }
+                        } else {
+                            Log::error('Auto-cancel: order marked paid but no captured payment found', ['order' => $order->id]);
                         }
-                        $payment->update(['status' => 'refunded']);
                     }
-                }
 
-                $order->statusHistory()->create([
-                    'status' => OrderStatus::Cancelled->value,
-                    'changed_by' => null,
-                    'note' => "Auto-cancelled: not accepted within {$window} minutes.",
-                ]);
+                    $order->update([
+                        'status' => OrderStatus::Cancelled->value,
+                        'cancellation_reason' => "Not accepted within {$window} minutes.",
+                        'cancelled_at' => now(),
+                        'payment_status' => ($wasPaid && $refunded) ? 'refunded' : $order->payment_status,
+                    ]);
 
-                $notifications->notify($order->user_id, 'order_status', 'Order cancelled',
-                    "Sorry — {$order->vendor->name} didn't accept order {$order->order_number} in time. "
-                    .($wasPaid ? 'Your payment has been refunded.' : 'You have not been charged.'),
-                    ['order_id' => $order->id]);
-                $notifications->notify($order->vendor->user_id, 'order_status', 'Order auto-cancelled',
-                    "Order {$order->order_number} expired unaccepted after {$window} minutes.",
-                    ['order_id' => $order->id]);
+                    $order->statusHistory()->create([
+                        'status' => OrderStatus::Cancelled->value,
+                        'changed_by' => null,
+                        'note' => "Auto-cancelled: not accepted within {$window} minutes.",
+                    ]);
 
-                event(new OrderStatusUpdated($order->id, $order->user_id, OrderStatus::Cancelled->value, $order->order_number));
-            });
+                    $notifications->notify($order->user_id, 'order_status', 'Order cancelled',
+                        "Sorry — {$order->vendor->name} didn't accept order {$order->order_number} in time. "
+                        .($wasPaid && $refunded ? 'Your payment has been refunded.' : ($wasPaid ? 'Your refund is being processed.' : 'You have not been charged.')),
+                        ['order_id' => $order->id]);
+                    $notifications->notify($order->vendor->user_id, 'order_status', 'Order auto-cancelled',
+                        "Order {$order->order_number} expired unaccepted after {$window} minutes.",
+                        ['order_id' => $order->id]);
+
+                    event(new OrderStatusUpdated($order->id, $order->user_id, OrderStatus::Cancelled->value, $order->order_number));
+                });
+                $cancelled++;
+            } catch (\Throwable $e) {
+                Log::error('Auto-cancel failed for order — will retry next run', ['order' => $order->id, 'error' => $e->getMessage()]);
+            }
         }
 
-        $this->info("Cancelled {$stale->count()} stale order(s).");
+        $this->info("Cancelled {$cancelled}/{$stale->count()} stale order(s).");
 
         return self::SUCCESS;
     }

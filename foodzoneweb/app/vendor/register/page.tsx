@@ -42,6 +42,12 @@ function deriveUsername(email: string): string {
 export default function VendorRegisterPage() {
   const { setAuth } = useAuthStore();
   const [done, setDone] = useState(false);
+  // Set once step 1 (account creation) succeeds. If step 2 (the actual
+  // vendor application) then fails, the account already exists — resubmitting
+  // the whole form would 422 on "email already taken" with no way forward.
+  // Retrying just submits step 2 again against the account we already have.
+  const [vendorPayload, setVendorPayload] = useState<Record<string, unknown> | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const {
     register,
     handleSubmit,
@@ -49,7 +55,33 @@ export default function VendorRegisterPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
+  const submitVendorApplication = async (payload: Record<string, unknown>) => {
+    try {
+      await api.post("/vendors/register", payload);
+      setDone(true);
+    } catch (e) {
+      setVendorPayload(payload);
+      toast.error(
+        e instanceof ApiError
+          ? `Your account was created, but the application didn't go through: ${e.message}`
+          : "Your account was created, but the application didn't go through.",
+      );
+    }
+  };
+
   const onSubmit = async (v: FormValues) => {
+    const payload = {
+      name: v.business_name,
+      description: v.description ? `[${v.business_type}] ${v.description}` : `[${v.business_type}]`,
+      contact_phone: v.contact_phone,
+      contact_email: v.email,
+      address: v.address,
+      city: v.city,
+      tax_id: v.tax_id || undefined,
+      business_license: v.business_license || undefined,
+      bank_account: v.bank_account || undefined,
+    };
+
     try {
       // 1) Create the owner's account, 2) submit the vendor application.
       const { data } = await api.post<AuthPayload>(
@@ -65,24 +97,20 @@ export default function VendorRegisterPage() {
         { auth: false },
       );
       setAuth(data.user, data.token);
-
-      await api.post("/vendors/register", {
-        name: v.business_name,
-        description: v.description ? `[${v.business_type}] ${v.description}` : `[${v.business_type}]`,
-        contact_phone: v.contact_phone,
-        contact_email: v.email,
-        address: v.address,
-        city: v.city,
-        tax_id: v.tax_id || undefined,
-        business_license: v.business_license || undefined,
-        bank_account: v.bank_account || undefined,
-      });
-
-      setDone(true);
     } catch (e) {
       applyApiError(e, setError);
       if (e instanceof ApiError) toast.error(e.message);
+      return;
     }
+
+    await submitVendorApplication(payload);
+  };
+
+  const retry = async () => {
+    if (!vendorPayload) return;
+    setRetrying(true);
+    await submitVendorApplication(vendorPayload);
+    setRetrying(false);
   };
 
   if (done) {
@@ -98,6 +126,27 @@ export default function VendorRegisterPage() {
           <Link href="/vendor/login">
             <Button className="mt-6 w-full">Go to Vendor Portal</Button>
           </Link>
+        </div>
+      </main>
+    );
+  }
+
+  // Account exists (step 1 succeeded) but the application itself hasn't gone
+  // through yet — resubmitting the full form would fail on "email already
+  // taken" with no way forward, so offer a scoped retry instead.
+  if (vendorPayload) {
+    return (
+      <main className="fz-hero flex min-h-dvh flex-1 items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl border border-line bg-bg-soft/80 p-8 shadow-lg backdrop-blur-xl text-center">
+          <Store className="mx-auto h-12 w-12 text-warning" />
+          <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight">Almost there</h1>
+          <p className="mt-2 text-sm text-muted">
+            Your account was created successfully, but submitting your business application didn&apos;t go
+            through. No need to fill the form again — just retry.
+          </p>
+          <Button className="mt-6 w-full" loading={retrying} onClick={retry}>
+            Retry application submission
+          </Button>
         </div>
       </main>
     );

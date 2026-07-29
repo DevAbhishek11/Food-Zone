@@ -82,7 +82,13 @@ export default function AddressesPage() {
                   )}
                 </div>
                 <button onClick={() => setEditing(a)} aria-label="Edit" className="text-muted hover:text-content"><Pencil className="h-4 w-4" /></button>
-                <button onClick={() => remove.mutate(a.id)} aria-label="Delete" className="text-muted hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+                <button
+                  onClick={() => remove.mutate(a.id, { onError: () => toast.error("Could not delete address.") })}
+                  aria-label="Delete"
+                  className="text-muted hover:text-danger"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
             ),
           )

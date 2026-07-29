@@ -31,20 +31,33 @@ export async function getEcho(): Promise<EchoLike | null> {
 
   if (!echoPromise) {
     echoPromise = (async () => {
-      const [{ default: Echo }, Pusher] = await Promise.all([import("laravel-echo"), import("pusher-js")]);
-      (window as unknown as { Pusher: unknown }).Pusher = Pusher.default;
+      try {
+        const [{ default: Echo }, Pusher] = await Promise.all([import("laravel-echo"), import("pusher-js")]);
+        (window as unknown as { Pusher: unknown }).Pusher = Pusher.default;
 
-      return new Echo({
-        broadcaster: "reverb",
-        key: process.env.NEXT_PUBLIC_REVERB_KEY,
-        wsHost: process.env.NEXT_PUBLIC_REVERB_HOST ?? window.location.hostname,
-        wsPort: Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 8080),
-        wssPort: Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 443),
-        forceTLS: (process.env.NEXT_PUBLIC_REVERB_SCHEME ?? "http") === "https",
-        enabledTransports: ["ws", "wss"],
-        authEndpoint: `${apiOrigin()}/broadcasting/auth`,
-        auth: { headers: { Authorization: `Bearer ${getToken() ?? ""}` } },
-      }) as unknown as EchoLike;
+        return new Echo({
+          broadcaster: "reverb",
+          key: process.env.NEXT_PUBLIC_REVERB_KEY,
+          wsHost: process.env.NEXT_PUBLIC_REVERB_HOST ?? window.location.hostname,
+          wsPort: Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 8080),
+          wssPort: Number(process.env.NEXT_PUBLIC_REVERB_PORT ?? 443),
+          forceTLS: (process.env.NEXT_PUBLIC_REVERB_SCHEME ?? "http") === "https",
+          enabledTransports: ["ws", "wss"],
+          authEndpoint: `${apiOrigin()}/broadcasting/auth`,
+          auth: { headers: { Authorization: `Bearer ${getToken() ?? ""}` } },
+        }) as unknown as EchoLike;
+      } catch (e) {
+        // A stale chunk after a deploy, or the dynamic import simply
+        // failing, must not become a permanently-rejected cached promise —
+        // every future getEcho() call would reject too, and any .then()
+        // without a .catch() anywhere in the app becomes an unhandled
+        // rejection. Resolving to null instead means realtime quietly stays
+        // off for the rest of the session (callers already treat null as
+        // "disabled") rather than retrying a doomed import on every call.
+        console.error("Realtime disabled — Echo failed to initialize.", e);
+
+        return null;
+      }
     })();
   }
   return echoPromise;

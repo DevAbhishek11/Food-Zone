@@ -119,6 +119,42 @@ class PaymentTest extends TestCase
         $this->assertEquals('pending', $order->fresh()->payment_status);
     }
 
+    public function test_pay_returns_502_and_marks_payment_failed_when_gateway_intent_creation_throws(): void
+    {
+        [, $customer, $order] = $this->onlineOrder();
+
+        $fake = new class implements \App\Contracts\PaymentGateway
+        {
+            public function name(): string
+            {
+                return 'mock';
+            }
+
+            public function createIntent(Payment $payment): array
+            {
+                throw new \RuntimeException('Gateway timeout');
+            }
+
+            public function verifyWebhook(string $rawPayload, ?string $signature): bool
+            {
+                return true;
+            }
+
+            public function refund(Payment $payment, ?float $amount = null): bool
+            {
+                return true;
+            }
+        };
+        app()->instance(\App\Contracts\PaymentGateway::class, $fake);
+
+        Sanctum::actingAs($customer);
+        $this->postJson("/api/v1/orders/{$order->id}/pay")->assertStatus(502);
+
+        // No orphaned 'created' row — the failed attempt is clearly marked.
+        $this->assertDatabaseHas('payments', ['order_id' => $order->id, 'status' => 'failed']);
+        $this->assertDatabaseMissing('payments', ['order_id' => $order->id, 'status' => 'created']);
+    }
+
     public function test_cancelling_a_paid_order_refunds_the_payment(): void
     {
         [, $customer, $order] = $this->onlineOrder('upi', 'paid');

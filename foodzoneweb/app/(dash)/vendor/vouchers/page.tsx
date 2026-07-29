@@ -43,7 +43,10 @@ export default function VendorVouchersPage() {
               <VoucherCard
                 key={v.id}
                 voucher={v}
-                onDelete={() => remove.mutate(v.id, { onSuccess: () => toast.success("Removed.") })}
+                onDelete={() => remove.mutate(v.id, {
+                  onSuccess: () => toast.success("Removed."),
+                  onError: () => toast.error("Could not delete voucher."),
+                })}
               />
             ))}
           </div>
