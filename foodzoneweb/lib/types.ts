@@ -100,7 +100,7 @@ export interface Post {
   shares_count: number;
   liked_by_me: boolean;
   is_saved?: boolean;
-  source?: "following" | "suggested" | "sponsored" | null;
+  source?: "following" | "suggested" | "sponsored" | "hashtag" | null;
   tagged_vendor_id: number | null;
   tagged_item_id: number | null;
   created_at: string;

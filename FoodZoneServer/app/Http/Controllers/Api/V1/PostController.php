@@ -44,10 +44,26 @@ class PostController extends Controller
             ->latest()
             ->paginate(15);
 
-        // Label provenance so clients can badge "Suggested" vs followed content.
+        // Label provenance so clients can badge "Suggested"/"Hashtag" vs followed content.
         $followingSet = array_flip($followingIds);
-        $posts->getCollection()->each(function ($p) use ($followingSet, $me) {
-            $p->source = ($p->user_id === $me->id || isset($followingSet[$p->user_id])) ? 'following' : 'suggested';
+        $followedTags = \App\Models\HashtagFollow::where('user_id', $me->id)->pluck('tag')->flip();
+        $posts->getCollection()->each(function ($p) use ($followingSet, $followedTags, $me) {
+            if ($p->user_id === $me->id || isset($followingSet[$p->user_id])) {
+                $p->source = 'following';
+
+                return;
+            }
+
+            preg_match_all('/#(\w+)/u', (string) $p->body, $matches);
+            foreach ($matches[1] as $tag) {
+                if ($followedTags->has(mb_strtolower($tag))) {
+                    $p->source = 'hashtag';
+
+                    return;
+                }
+            }
+
+            $p->source = 'suggested';
         });
 
         return ApiResponse::paginated($posts, PostResource::class, 'Feed loaded.');

@@ -108,6 +108,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
 
         // Social — feed & posts
         Route::get('feed', [PostController::class, 'feed']);
+        Route::get('hashtags/followed', [HashtagController::class, 'followed']);
+        Route::post('hashtags/{tag}/follow', [HashtagController::class, 'follow']);
+        Route::delete('hashtags/{tag}/follow', [HashtagController::class, 'unfollow']);
         Route::get('feed/suggested', [PostController::class, 'suggested']);
         Route::get('saved', [PostController::class, 'saved']);
         Route::get('collections', [\App\Http\Controllers\Api\V1\SavedCollectionController::class, 'index']);

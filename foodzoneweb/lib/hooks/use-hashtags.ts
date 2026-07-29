@@ -2,7 +2,7 @@
 
 import { api } from "@/lib/api";
 import type { ApiEnvelope, Post } from "@/lib/types";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface TrendingHashtag {
   tag: string;
@@ -15,6 +15,28 @@ export function useTrendingHashtags() {
     queryFn: () => api.get<TrendingHashtag[]>("/hashtags/trending").then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
+}
+
+/** Tags the current user follows — matching posts get mixed into their feed. */
+export function useFollowedHashtags() {
+  return useQuery({
+    queryKey: ["hashtags-followed"],
+    queryFn: () => api.get<string[]>("/hashtags/followed").then((r) => r.data),
+  });
+}
+
+export function useToggleHashtagFollow() {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["hashtags-followed"] });
+  const follow = useMutation({
+    mutationFn: (tag: string) => api.post(`/hashtags/${encodeURIComponent(tag)}/follow`),
+    onSuccess: invalidate,
+  });
+  const unfollow = useMutation({
+    mutationFn: (tag: string) => api.del(`/hashtags/${encodeURIComponent(tag)}/follow`),
+    onSuccess: invalidate,
+  });
+  return { follow, unfollow };
 }
 
 export function useHashtagPosts(tag: string) {

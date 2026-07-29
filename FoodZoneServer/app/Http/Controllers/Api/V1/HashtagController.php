@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Enums\PostPrivacy;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PostResource;
+use App\Models\HashtagFollow;
 use App\Models\Post;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -59,5 +60,29 @@ class HashtagController extends Controller
             ->paginate(15);
 
         return ApiResponse::paginated($posts, PostResource::class, "Posts tagged #{$tag}.");
+    }
+
+    /** The current user's followed hashtags (mixed into their feed — see PostController::feed). */
+    public function followed(Request $request): JsonResponse
+    {
+        $tags = HashtagFollow::where('user_id', $request->user()->id)->orderBy('tag')->pluck('tag');
+
+        return ApiResponse::success($tags, 'Followed hashtags loaded.');
+    }
+
+    public function follow(Request $request, string $tag): JsonResponse
+    {
+        $tag = mb_strtolower(ltrim($tag, '#'));
+        HashtagFollow::firstOrCreate(['user_id' => $request->user()->id, 'tag' => $tag]);
+
+        return ApiResponse::success(null, "Following #{$tag}.", 201);
+    }
+
+    public function unfollow(Request $request, string $tag): JsonResponse
+    {
+        $tag = mb_strtolower(ltrim($tag, '#'));
+        HashtagFollow::where('user_id', $request->user()->id)->where('tag', $tag)->delete();
+
+        return ApiResponse::success(null, "Unfollowed #{$tag}.");
     }
 }

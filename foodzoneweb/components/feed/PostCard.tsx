@@ -204,6 +204,9 @@ export function PostCard({ post, defaultShowComments = false }: { post: Post; de
         {post.source === "suggested" && (
           <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] font-medium uppercase text-muted">Suggested</span>
         )}
+        {post.source === "hashtag" && (
+          <span className="rounded-full bg-info/15 px-2 py-0.5 text-[10px] font-medium uppercase text-info">Hashtag you follow</span>
+        )}
 
         <div ref={menuRef} className="relative">
           <button
