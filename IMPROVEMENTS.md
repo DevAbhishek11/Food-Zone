@@ -23,16 +23,34 @@ Legend: 🟢 quick win (hours) · 🟡 medium (1–3 days) · 🔴 large (1 week
 | 1.9 | **Story reactions & reply-to-DM** | Stories work; quick emoji react + "reply" that opens a DM thread (spec §9.2). Chat system already exists to receive them. | 🟡 |
 | 1.10 | **Follow hashtags** | Hashtag pages exist; "follow" a tag to mix its posts into the feed (spec §9.6). | 🟡 |
 
-## 2. Real-time (biggest platform gap)
+## 2. Real-time ✅ activated 2026-07-29
 
-`BROADCAST_CONNECTION=log` — events are written to the log, so **nothing is actually real-time** despite
-Echo being wired on both clients.
+Was completely dead despite Echo being wired on both clients — two separate root causes, both fixed:
+1. `BROADCAST_CONNECTION` was `log` and Reverb wasn't running → switched to `reverb`, `reverb:start` now runs
+   alongside the API (added to `composer dev`).
+2. **Silent killer**: Laravel queues `ShouldBroadcast` events by default (`Illuminate\Broadcasting\BroadcastEvent`
+   implements `ShouldQueue`). With `QUEUE_CONNECTION=database` and no `queue:work` process, every broadcast —
+   chat messages, order status, notifications — silently piled up in the `jobs` table forever and was never
+   delivered. `composer dev` already ran `queue:listen`; it just hadn't been used. Now documented as required.
+3. Also missing: `config/cors.php` only allowlisted `api/*` and `sanctum/csrf-cookie` — Echo's private-channel
+   auth POSTs to `/broadcasting/auth`, which wasn't covered, so every subscription silently failed CORS preflight
+   even with Reverb + queue both running. Added `broadcasting/auth` to the CORS paths.
 
-- 🟡 **Install Laravel Reverb** and switch broadcasting to it. Channels are already defined (`routes/channels.php`),
-  clients already have `echo.ts`. This unlocks, at once: live chat delivery, live order status,
-  live notification badges, vendor new-order alerts with sound.
-- 🟢 After Reverb: add the **"N new posts — tap to load"** feed banner (spec §8.3) using a broadcast on new posts.
-- 🟡 Typing indicators + read receipts already have endpoints (`conversations/{id}/typing`) — surface them live.
+Verified end-to-end with two independent logged-in browser sessions: Alice sends a chat message via the API,
+Admin's already-open thread updates live with zero refresh (`message.sent` WS frame observed), and Admin's
+notification bell fires in the same instant (`notification.created`).
+
+**Run all four dev processes together**: `composer dev` (server + queue + vite) — note Reverb was added to
+that script; on Windows where `composer dev`'s concurrently wrapper may not suit your shell, run
+`php artisan reverb:start`, `php artisan queue:listen`, and `php artisan serve` as three separate processes.
+**A queue worker must always be running in production** (Horizon or `queue:work` as a supervised service) or
+real-time silently regresses to this exact failure mode with no error anywhere in the stack.
+
+Still open:
+- 🟢 **"N new posts — tap to load"** feed banner (spec §8.3) using a broadcast on new posts.
+- 🟡 Typing indicators + read receipts already have endpoints (`conversations/{id}/typing`) — surface them live
+  now that the transport actually works.
+- 🟡 Vendor new-order sound alert — `order.status` channel already delivers; needs a client-side toast + sound.
 
 ## 3. Ordering & payments
 
