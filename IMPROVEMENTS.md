@@ -1,8 +1,10 @@
 # FoodZone — Improvement & Feature Roadmap
 
 > Written 2026-07-06, based on an audit of the actual codebase (Laravel API · Next.js web · Expo mobile).
-> Current state: 220 backend tests, 43 web pages, 26 mobile routes, dedicated admin/vendor dashboards,
-> working image + story pipeline, dark design system shared across web & mobile.
+> Updated 2026-07-29: Sprint 1 fully shipped (see build order at bottom) — real-time, order dispute tools,
+> saved collections, hashtag follow, review photos, admin user drawer, live new-posts banner, account
+> deletion. Current state: 267 backend tests, 43 web pages, 26 mobile routes, dedicated admin/vendor
+> dashboards, working image + story pipeline + realtime, dark design system shared across web & mobile.
 
 Legend: 🟢 quick win (hours) · 🟡 medium (1–3 days) · 🔴 large (1 week+)
 
@@ -15,13 +17,13 @@ Legend: 🟢 quick win (hours) · 🟡 medium (1–3 days) · 🔴 large (1 week
 | 1.1 | **Wallet + loyalty redemption at checkout** | Loyalty points already accrue (LoyaltyService) but users can't *spend* them — the loop is broken. Add a `wallets` table, "pay with points/credits" at checkout, refunds credited to wallet. This is the single biggest retention feature in the spec (§8.7, §13.4). | 🔴 |
 | 1.2 | ~~One-tap reorder~~ ✅ already built (`POST /orders/{id}/reorder` + Reorder button on orders page) | — | ✅ |
 | 1.3 | **Referral program** | `users` invite code + reward both sides on first order (spec §13.3). Viral growth loop; touches signup + checkout only. | 🟡 |
-| 1.4 | **Review photos + helpful votes** | Reviews exist, vendor replies exist. Photos on reviews (media pipeline is ready) and "helpful" votes make reviews trustworthy (spec §10.4). | 🟡 |
-| 1.5 | **Saved-post collections** | Bookmarks exist but are one flat list. Named folders ("Recipes", "Date night") are a small schema addition (spec §9.4). | 🟡 |
+| 1.4 | **Review photos** ✅ shipped 2026-07-29 (helpful votes still todo) | Upload UI on RateOrderDialog + thumbnail strips on both review lists | ✅ |
+| 1.5 | **Saved-post collections** ✅ shipped 2026-07-29 (named folders, move-between, chip bar) | Done | ✅ |
 | 1.6 | **Post editing** ✅ inline editor shipped 2026-07-07 (edit-history table still todo) | Done in PostCard menu | ✅ |
 | 1.7 | **Polls in posts** | Composer already has the layout to host it; 2–4 options + duration (spec §9.1). Great engagement driver. | 🟡 |
 | 1.8 | **Pin posts to profile** ✅ shipped 2026-07-07 (`PUT /posts/{id}/pin`, max 3, pinned-first profile, badge + menu UI) | Done | ✅ |
 | 1.9 | **Story reactions & reply-to-DM** | Stories work; quick emoji react + "reply" that opens a DM thread (spec §9.2). Chat system already exists to receive them. | 🟡 |
-| 1.10 | **Follow hashtags** | Hashtag pages exist; "follow" a tag to mix its posts into the feed (spec §9.6). | 🟡 |
+| 1.10 | **Follow hashtags** ✅ shipped 2026-07-29 (follow/unfollow, feed posts from followed tags get a distinct "Hashtag you follow" badge) | Done | ✅ |
 
 ## 2. Real-time ✅ activated 2026-07-29
 
@@ -46,8 +48,10 @@ that script; on Windows where `composer dev`'s concurrently wrapper may not suit
 **A queue worker must always be running in production** (Horizon or `queue:work` as a supervised service) or
 real-time silently regresses to this exact failure mode with no error anywhere in the stack.
 
+- ✅ **"N new posts — tap to load"** feed banner (spec §8.3) — shipped 2026-07-29: `PostCreated` broadcasts
+  on a public `feed` channel for public posts; the feed page counts them live and shows a tap-to-load pill.
+
 Still open:
-- 🟢 **"N new posts — tap to load"** feed banner (spec §8.3) using a broadcast on new posts.
 - 🟡 Typing indicators + read receipts already have endpoints (`conversations/{id}/typing`) — surface them live
   now that the transport actually works.
 - 🟡 Vendor new-order sound alert — `order.status` channel already delivers; needs a client-side toast + sound.
@@ -57,8 +61,8 @@ Still open:
 - 🟡 **Activate a real payment gateway.** The abstraction is done (`PaymentGateway` contract with
   Mock/Razorpay/Stripe implementations) — needs API keys, webhook endpoint hardening, and an e2e test
   against Razorpay sandbox. Until then everything runs on Mock.
-- 🟡 **Refund flow** — admin can't currently initiate refunds from the orders page (spec §5.6). Add
-  `refunds` handling to the payment gateway contract + admin UI button with reason.
+- ✅ **Refund flow** — shipped 2026-07-29: `POST /admin/orders/{id}/refund` (full or partial, any order
+  status with a captured payment) + a "Manage" dialog on the admin orders page.
 - ✅ **Scheduled order-acceptance timeout** — shipped 2026-07-07: `orders:cancel-stale` runs every minute,
   window via `ORDER_ACCEPTANCE_WINDOW` (default 15 min), refunds paid orders, notifies both sides.
 - 🟡 **Delivery charges** — vendor-configurable flat/threshold-free delivery fee shown before checkout (spec §10.5).
@@ -94,8 +98,10 @@ reports queue, broadcast, audit log, system health, revenue.
 Still worth adding:
 - 🟡 **Platform settings page** — `settings` key-value table + UI: default commission, maintenance mode
   toggle, feature flags (spec §5.12). Backend reads settings with cache.
-- 🟢 **User detail drawer** — click a user → orders, posts, violations, login history in one panel (spec §5.2).
-- 🟢 **Admin order dispute tools** — manual status override + refund button on the admin orders page (spec §5.6).
+- ✅ **User detail drawer** — shipped 2026-07-29: click a user in admin/users → slide-in drawer with
+  orders/posts/violations stats + recent activity (spec §5.2).
+- ✅ **Admin order dispute tools** — shipped 2026-07-29: status override (admins could already bypass
+  transition rules server-side, just needed a UI) + the new refund endpoint, both in one dialog (spec §5.6).
 - 🟡 **IP ban list** (spec §11.3) — table + middleware + admin UI.
 - 🟡 **Email template management** — editable templates for the transactional emails (spec §5.12).
 - 🟢 **Export everywhere** — vendors/orders lists have CSV; add to reports + audit log.
@@ -122,7 +128,9 @@ Still worth adding:
 - 🟡 **2FA (TOTP)** — optional for users, mandatory for admin (spec §22.1). `pragmarx/google2fa` + QR setup screen.
 - 🟡 **OAuth login** — Google/Apple via Socialite (spec §22.1); big signup-friction reducer.
 - 🟢 **Login attempt lockout** — 5 fails → 15-min lockout (spec §22.1); Laravel rate limiter, mostly config.
-- 🟢 **Account deactivation/deletion** with 30-day grace (spec §8.2) — soft-delete + purge command.
+- ✅ **Account deletion with 30-day grace** — shipped 2026-07-29: `POST /profile/request-deletion`
+  (password-confirmed) + daily `users:purge-deleted` command. Also added `POST /profile/reactivate` and a
+  web `ReactivateScreen` — closes a pre-existing gap where a deactivated account had no way back in at all.
 - 🟡 **Private accounts done fully** — follow-request approve/deny UI (backend `status` column already exists).
 
 ## 10. Performance & infrastructure
@@ -141,8 +149,8 @@ Still worth adding:
 - 🟢 Feed pagination: infinite scroll works, but a scroll-to-top + "new posts" pill would help long sessions.
 - 🟢 Empty states: some pages (favorites, leaderboard early-on) could suggest actions instead of plain text.
 - 🟢 The vendor "Customers" page is anonymised aggregate — add per-customer order counts once privacy rules allow.
-- 🟢 `admin@foodzone.app` seeded password drifted once — add a `php artisan dev:reset-demo-users` command
-  so demo credentials are always recoverable.
+- ✅ `admin@foodzone.app` seeded password drifted once — `php artisan dev:reset-demo-users` shipped
+  2026-07-29 (resets admin@foodzone.app / alice@example.com to "password"; refuses to run in production).
 - 🟢 Add Playwright (or keep the puppeteer scripts) as a committed `e2e/` suite — the browser smoke crawl
   caught every real bug this week; it should run in CI.
 
@@ -150,10 +158,14 @@ Still worth adding:
 
 ## Suggested build order (next 4 sprints)
 
-1. **Sprint 1 — close the loops**: Reverb real-time (§2), reorder (1.2), pin posts (1.8), post editing (1.6),
-   acceptance timeout (§3), menu photos in vendor list (§4).
-2. **Sprint 2 — money**: wallet (1.1), Razorpay activation + refunds + invoices (§3), payouts page (§4).
-3. **Sprint 3 — growth**: referrals (1.3), review photos (1.4), OAuth + 2FA (§9), push notifications e2e (§8),
-   Meilisearch (§7).
+1. **Sprint 1 — close the loops** ✅ **COMPLETE 2026-07-29**: Reverb real-time (§2), reorder (1.2),
+   pin posts (1.8), post editing (1.6), acceptance timeout (§3), menu photos in vendor list (§4),
+   plus opportunistically pulled forward from later sprints: admin refund + status override (§3, §6),
+   saved collections (1.5), hashtag follow (1.10), review photos (1.4), admin user detail drawer (§6),
+   live new-posts banner (§2), account deletion + reactivation (§9).
+2. **Sprint 2 — money**: wallet (1.1), Razorpay activation + invoices (§3), vendor payouts page (§4).
+   Refunds already done; this sprint is what's left of "money."
+3. **Sprint 3 — growth**: referrals (1.3), polls (1.7), story reactions/reply (1.9), OAuth + 2FA (§9),
+   push notifications e2e (§8), Meilisearch (§7).
 4. **Sprint 4 — revenue**: sponsored-posts ad MVP (§5), platform settings + feature flags (§6),
    mobile composer parity (§8).
