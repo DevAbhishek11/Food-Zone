@@ -34,6 +34,7 @@ class AdminController extends Controller
     public function __construct(
         private NotificationService $notifications,
         private AuditService $audit,
+        private \App\Contracts\PaymentGateway $gateway,
     ) {}
 
     /** Immutable audit trail of moderation/admin actions. */
@@ -147,6 +148,57 @@ class AdminController extends Controller
             ->paginate(20);
 
         return ApiResponse::paginated($orders, OrderResource::class, 'Orders loaded.');
+    }
+
+    /**
+     * Admin-initiated refund for dispute resolution (spec §5.6). Works on any
+     * order with a captured payment, regardless of order status — unlike the
+     * customer self-cancel flow, which only allows refunding pending orders.
+     */
+    public function refundOrder(Request $request, Order $order): JsonResponse
+    {
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+            'amount' => ['nullable', 'numeric', 'min:0.01'],
+        ]);
+
+        if ($order->payment_status !== 'paid') {
+            return ApiResponse::error('This order has no captured payment to refund.', 422);
+        }
+
+        $payment = $order->payments()->where('status', 'paid')->latest()->first();
+        if (! $payment) {
+            return ApiResponse::error('No captured payment found for this order.', 422);
+        }
+
+        $ok = $this->gateway->refund($payment, $data['amount'] ?? null);
+        if (! $ok) {
+            return ApiResponse::error('The payment gateway rejected the refund.', 502);
+        }
+
+        $amount = $data['amount'] ?? (float) $order->total;
+        $note = $amount < (float) $order->total
+            ? sprintf('Partial refund of %.2f issued: %s', $amount, $data['reason'])
+            : 'Refund issued: '.$data['reason'];
+
+        DB::transaction(function () use ($order, $payment, $note) {
+            $payment->update(['status' => 'refunded']);
+            $order->update(['payment_status' => 'refunded']);
+            $order->statusHistory()->create([
+                'status' => $order->status->value,
+                'changed_by' => request()->user()->id,
+                'note' => $note,
+            ]);
+        });
+
+        $this->notifications->notify($order->user_id, 'order_status', 'Refund issued',
+            "A refund for order {$order->order_number} has been processed. Reason: {$data['reason']}",
+            ['order_id' => $order->id]);
+        $this->audit->log($request->user(), 'order.refunded', $order, [
+            'reason' => $data['reason'], 'amount' => $data['amount'] ?? (float) $order->total,
+        ]);
+
+        return ApiResponse::success(new OrderResource($order->fresh()), 'Refund processed.');
     }
 
     /** Apply a moderation action to several users at once. */

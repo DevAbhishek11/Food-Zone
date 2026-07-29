@@ -89,6 +89,23 @@ export function useAdminOrders(filters: { status?: string; q?: string; payment_s
   });
 }
 
+/** Dispute-resolution actions on any order (spec §5.6). */
+export function useAdminOrderActions() {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-orders"] });
+  const setStatus = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      api.post(`/vendor/orders/${id}/status`, { status }),
+    onSuccess: invalidate,
+  });
+  const refund = useMutation({
+    mutationFn: ({ id, reason, amount }: { id: number; reason: string; amount?: number }) =>
+      api.post(`/admin/orders/${id}/refund`, { reason, amount }),
+    onSuccess: invalidate,
+  });
+  return { setStatus, refund };
+}
+
 export function useAdminVendors(status?: string) {
   return useInfiniteQuery({
     queryKey: ["admin-vendors", status],
