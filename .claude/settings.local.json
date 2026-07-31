@@ -113,7 +113,8 @@
       "Bash(awk 'NR>=30 && NR<=70 {printf \"%d: %s\\\\n\", NR, $0}' src/app/manage/index.tsx)",
       "Bash(awk 'NR>=15 && NR<=30 {printf \"%d: %s\\\\n\", NR, $0}' src/components/story-bar.tsx)",
       "Bash(awk 'NR>=100 && NR<=190 {printf \"%d: %s\\\\n\", NR, $0}' \"app/\\(app\\)/search/page.tsx\")",
-      "Bash(curl -s -o /dev/null -w \"api:%{http_code}\\\\n\" -m 10 http://127.0.0.1:8000/api/v1/health)"
+      "Bash(curl -s -o /dev/null -w \"api:%{http_code}\\\\n\" -m 10 http://127.0.0.1:8000/api/v1/health)",
+      "Bash(git commit -m 'Update roadmap: mark Sprint 2 complete, document error-handling audit *)"
     ]
   }
 }
