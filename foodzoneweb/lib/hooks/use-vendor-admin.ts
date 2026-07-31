@@ -51,6 +51,25 @@ export function useVendorAnalytics(days = 14) {
   return useQuery({ queryKey: ["vendor-analytics", days], queryFn: () => api.get<VendorAnalytics>("/vendor/analytics", { query: { days } }), select: (e) => e.data });
 }
 
+export interface VendorPayouts {
+  group: "day" | "week";
+  range_days: number;
+  series: { date: string; gross: number; commission: number; net: number }[];
+  refunded_orders_excluded: number;
+  lifetime_gross: number;
+  lifetime_commission: number;
+  lifetime_net: number;
+}
+
+/** Revenue/payout breakdown for delivered orders (spec §6.7). Refunded orders are excluded. */
+export function useVendorPayouts(days = 30, group: "day" | "week" = "day") {
+  return useQuery({
+    queryKey: ["vendor-payouts", days, group],
+    queryFn: () => api.get<VendorPayouts>("/vendor/payouts", { query: { days, group } }),
+    select: (e) => e.data,
+  });
+}
+
 export function useVendorHours() {
   return useQuery({ queryKey: ["vendor-hours"], queryFn: () => api.get<OperatingHour[]>("/vendor/hours"), select: (e) => e.data });
 }

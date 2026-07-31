@@ -714,16 +714,32 @@ class VendorController extends Controller
         return ApiResponse::success($data, 'Item analytics.');
     }
 
-    /** Daily payout breakdown (gross / commission / net) for delivered orders. */
+    /**
+     * Payout breakdown (gross / commission / net) for delivered orders,
+     * grouped by day or week (spec §6.7). A refunded order — even one that
+     * reached 'delivered' before the refund — contributes nothing: the
+     * vendor was never actually paid for it, so it must not inflate payouts.
+     */
     public function payouts(Request $request): JsonResponse
     {
         $vendor = $this->ownedVendor($request);
-        $from = now()->subDays(30);
+        $days = min(max((int) $request->query('days', 30), 1), 365);
+        $group = $request->query('group', 'day') === 'week' ? 'week' : 'day';
+        $from = now()->subDays($days);
 
-        $rows = $vendor->orders()
+        $dateExpr = $group === 'week' ? "DATE(DATE_SUB(delivered_at, INTERVAL WEEKDAY(delivered_at) DAY))" : 'DATE(delivered_at)';
+        // SQLite (tests) doesn't know WEEKDAY() — use its own week-start expression there.
+        if (config('database.default') === 'sqlite') {
+            $dateExpr = $group === 'week' ? "DATE(delivered_at, 'weekday 0', '-6 days')" : 'DATE(delivered_at)';
+        }
+
+        $paidQuery = fn () => $vendor->orders()
             ->where('status', OrderStatus::Delivered->value)
-            ->where('delivered_at', '>=', $from)
-            ->selectRaw('DATE(delivered_at) as d, SUM(total) as gross, SUM(commission) as commission')
+            ->where('payment_status', 'paid') // excludes refunded orders entirely
+            ->where('delivered_at', '>=', $from);
+
+        $rows = $paidQuery()
+            ->selectRaw("{$dateExpr} as d, SUM(total) as gross, SUM(commission) as commission")
             ->groupBy('d')
             ->orderBy('d', 'desc')
             ->get();
@@ -735,7 +751,23 @@ class VendorController extends Controller
             'net' => round((float) $r->gross - (float) $r->commission, 2),
         ]);
 
-        return ApiResponse::success($data, 'Payouts (last 30 days).');
+        $refundedCount = $vendor->orders()
+            ->where('payment_status', 'refunded')
+            ->where('delivered_at', '>=', $from)
+            ->count();
+
+        $lifetimeGross = (float) $vendor->orders()->where('status', OrderStatus::Delivered->value)->where('payment_status', 'paid')->sum('total');
+        $lifetimeCommission = (float) $vendor->orders()->where('status', OrderStatus::Delivered->value)->where('payment_status', 'paid')->sum('commission');
+
+        return ApiResponse::success([
+            'group' => $group,
+            'range_days' => $days,
+            'series' => $data,
+            'refunded_orders_excluded' => $refundedCount,
+            'lifetime_gross' => round($lifetimeGross, 2),
+            'lifetime_commission' => round($lifetimeCommission, 2),
+            'lifetime_net' => round($lifetimeGross - $lifetimeCommission, 2),
+        ], 'Payouts loaded.');
     }
 
     public function flashDealCreate(Request $request): JsonResponse

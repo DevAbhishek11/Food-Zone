@@ -3,7 +3,7 @@
 import { DashShell, type DashNavGroup } from "@/components/dash/DashShell";
 import { StoreStatusCard } from "@/components/vendor/StoreStatusCard";
 import { useAuth } from "@/lib/auth-context";
-import { Boxes, Clock, LayoutDashboard, ListOrdered, Star, Tag, Users, UtensilsCrossed } from "lucide-react";
+import { Boxes, Clock, LayoutDashboard, ListOrdered, Star, Tag, Users, UtensilsCrossed, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
@@ -18,6 +18,7 @@ const NAV: DashNavGroup[] = [
       { href: "/vendor/menu", label: "Menu", icon: UtensilsCrossed },
       { href: "/vendor/inventory", label: "Inventory", icon: Boxes },
       { href: "/vendor/hours", label: "Operating hours", icon: Clock },
+      { href: "/vendor/payouts", label: "Payouts", icon: Wallet },
     ],
   },
   {

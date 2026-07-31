@@ -128,7 +128,7 @@ class VendorDashboardV3Test extends TestCase
         ]);
 
         Sanctum::actingAs($vendor->user);
-        $row = $this->getJson('/api/v1/vendor/payouts')->assertOk()->json('data.0');
+        $row = $this->getJson('/api/v1/vendor/payouts')->assertOk()->json('data.series.0');
         $this->assertEquals(1100.0, $row['gross']);
         $this->assertEquals(100.0, $row['commission']);
         $this->assertEquals(1000.0, $row['net']);
