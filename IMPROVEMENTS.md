@@ -1,10 +1,13 @@
 # FoodZone — Improvement & Feature Roadmap
 
 > Written 2026-07-06, based on an audit of the actual codebase (Laravel API · Next.js web · Expo mobile).
-> Updated 2026-07-29: Sprint 1 fully shipped (see build order at bottom) — real-time, order dispute tools,
-> saved collections, hashtag follow, review photos, admin user drawer, live new-posts banner, account
-> deletion. Current state: 267 backend tests, 43 web pages, 26 mobile routes, dedicated admin/vendor
-> dashboards, working image + story pipeline + realtime, dark design system shared across web & mobile.
+> Updated 2026-07-29: Sprint 1 fully shipped — real-time, order dispute tools, saved collections, hashtag
+> follow, review photos, admin user drawer, live new-posts banner, account deletion.
+> Updated 2026-07-31: Sprint 2 "money" shipped — wallet + loyalty redemption, vendor payouts page — plus a
+> full error-handling pass (18 findings from an independent audit, all HIGH/MEDIUM fixed with regression
+> tests). Current state: 284 backend tests, 44 web pages, 26 mobile routes, dedicated admin/vendor
+> dashboards, working image + story pipeline + realtime + wallet, dark design system shared across web &
+> mobile. Mobile app error-handling audit findings remain open (see §8).
 
 Legend: 🟢 quick win (hours) · 🟡 medium (1–3 days) · 🔴 large (1 week+)
 
@@ -14,7 +17,7 @@ Legend: 🟢 quick win (hours) · 🟡 medium (1–3 days) · 🔴 large (1 week
 
 | # | Feature | Why it matters | Effort |
 |---|---------|----------------|--------|
-| 1.1 | **Wallet + loyalty redemption at checkout** | Loyalty points already accrue (LoyaltyService) but users can't *spend* them — the loop is broken. Add a `wallets` table, "pay with points/credits" at checkout, refunds credited to wallet. This is the single biggest retention feature in the spec (§8.7, §13.4). | 🔴 |
+| 1.1 | **Wallet + loyalty redemption** ✅ shipped 2026-07-31 — wallets/wallet_transactions ledger, pay-with-wallet at checkout (full-payment method, marks order paid instantly), POST /loyalty/redeem converts points→credit, all 3 refund paths (cancel, admin refund, auto-cancel) credit the wallet correctly for wallet-paid orders | Done | ✅ |
 | 1.2 | ~~One-tap reorder~~ ✅ already built (`POST /orders/{id}/reorder` + Reorder button on orders page) | — | ✅ |
 | 1.3 | **Referral program** | `users` invite code + reward both sides on first order (spec §13.3). Viral growth loop; touches signup + checkout only. | 🟡 |
 | 1.4 | **Review photos** ✅ shipped 2026-07-29 (helpful votes still todo) | Upload UI on RateOrderDialog + thumbnail strips on both review lists | ✅ |
@@ -60,9 +63,13 @@ Still open:
 
 - 🟡 **Activate a real payment gateway.** The abstraction is done (`PaymentGateway` contract with
   Mock/Razorpay/Stripe implementations) — needs API keys, webhook endpoint hardening, and an e2e test
-  against Razorpay sandbox. Until then everything runs on Mock.
+  against Razorpay sandbox. Until then everything runs on Mock. As of 2026-07-31 the gateway call sites
+  (`pay`, refund x3) are properly try/catch-guarded and never mis-report a failed gateway call as success —
+  see §12 — so activating a real gateway now is purely a config/credentials change, no code risk.
 - ✅ **Refund flow** — shipped 2026-07-29: `POST /admin/orders/{id}/refund` (full or partial, any order
-  status with a captured payment) + a "Manage" dialog on the admin orders page.
+  status with a captured payment) + a "Manage" dialog on the admin orders page. Hardened 2026-07-31: a
+  failed/thrown gateway refund no longer marks the order "refunded" (see §12); wallet-paid orders refund
+  to the wallet instantly across all three refund paths.
 - ✅ **Scheduled order-acceptance timeout** — shipped 2026-07-07: `orders:cancel-stale` runs every minute,
   window via `ORDER_ACCEPTANCE_WINDOW` (default 15 min), refunds paid orders, notifies both sides.
 - 🟡 **Delivery charges** — vendor-configurable flat/threshold-free delivery fee shown before checkout (spec §10.5).
@@ -70,8 +77,11 @@ Still open:
 
 ## 4. Vendor dashboard
 
-- 🟡 **Payouts page** — weekly payout calculation (revenue − commission − refunds), payout history,
-  CSV statement (spec §6.7). Data already exists on orders; this is mostly aggregation + UI.
+- ✅ **Payouts page** — shipped 2026-07-31: `/vendor/payouts`, day/week grouping, lifetime summary, CSV
+  export. Fixed a real bug in the pre-existing endpoint: refunded orders were still counting toward payout
+  (spec's "revenue − commission − **refunds**" wasn't actually subtracting refunds). Still open: payout
+  *scheduling*, a persisted payout-history/status table, and downloadable tax statements — this shipped the
+  revenue-breakdown half of §6.7, not the batch-payout-processing half.
 - ✅ **Menu item photos in the list view** — shipped 2026-07-07 (thumbnail or placeholder per row).
 - 🟢 **CSV menu import/export** (spec §6.3) — export exists for other admin lists; reuse the csv helper.
 - 🟡 **Recipe-level inventory** — map ingredients → menu items with auto-deduction on order (spec §16.1).
@@ -154,6 +164,26 @@ Still worth adding:
 - 🟢 Add Playwright (or keep the puppeteer scripts) as a committed `e2e/` suite — the browser smoke crawl
   caught every real bug this week; it should run in CI.
 
+## 12. Error handling (independent audit, 2026-07-31)
+
+Ran a dedicated audit for silent failures / bad error handling across all three apps. All HIGH and MEDIUM
+web+backend findings are fixed with regression tests (see commit "bug fixes and made error handling
+proper"). Fixed: unguarded payment-gateway calls (`pay`, all 3 refund paths — now try/catch'd, and a
+failed/thrown refund no longer marks the order "refunded" when no money actually moved), no per-order
+isolation in `orders:cancel-stale`/`users:purge-deleted` (one bad row used to be able to silently wedge the
+whole scheduled job forever), a vendor-signup flow that permanently locked an applicant out if step 2 failed
+after step 1 succeeded, ~12 web mutation call sites with no error feedback at all (delete/toggle/pin/mute
+buttons that silently did nothing on failure), search rendering "No results" on an actual API error, and
+`auth-store` bouncing an authenticated user to `/login` on a transient network blip instead of only on a
+real 401.
+
+**Still open — mobile app** (same audit, not yet applied): no `MutationCache` default error handler in
+`FoodZoneApp/src/lib/query-client.ts` (mirrors the web fix, higher leverage since mobile has fewer
+per-call-site handlers already) — highest-impact bare `.mutate()` sites: store open/close toggle
+(`manage/index.tsx`), story creation (`story-bar.tsx` — upload succeeds, story never appears, no message),
+follow/unfollow and message actions (`user/[username].tsx`, `messages/[id].tsx`), image-picker rejection
+unhandled in `use-media.ts`.
+
 ---
 
 ## Suggested build order (next 4 sprints)
@@ -163,9 +193,10 @@ Still worth adding:
    plus opportunistically pulled forward from later sprints: admin refund + status override (§3, §6),
    saved collections (1.5), hashtag follow (1.10), review photos (1.4), admin user detail drawer (§6),
    live new-posts banner (§2), account deletion + reactivation (§9).
-2. **Sprint 2 — money**: wallet (1.1), Razorpay activation + invoices (§3), vendor payouts page (§4).
-   Refunds already done; this sprint is what's left of "money."
-3. **Sprint 3 — growth**: referrals (1.3), polls (1.7), story reactions/reply (1.9), OAuth + 2FA (§9),
-   push notifications e2e (§8), Meilisearch (§7).
+2. **Sprint 2 — money** ✅ **COMPLETE 2026-07-31**: wallet + loyalty redemption (1.1), vendor payouts page
+   (§4), plus a full error-handling audit and fix pass (§12, web + backend). What's left of "money":
+   Razorpay activation + invoices (§3) — both are now lower-risk since the gateway call sites are hardened.
+3. **Sprint 3 — growth**: mobile error-handling pass (§12), referrals (1.3), polls (1.7), story
+   reactions/reply (1.9), OAuth + 2FA (§9), push notifications e2e (§8), Meilisearch (§7).
 4. **Sprint 4 — revenue**: sponsored-posts ad MVP (§5), platform settings + feature flags (§6),
    mobile composer parity (§8).
